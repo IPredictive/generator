@@ -48,10 +48,16 @@
 <footer class="wrap footer"><span>© <span id="year"></span> AplusCity · AI Business Studio</span><span>Free local brief builder. Optional AI text analysis may use account quota. Video generation is disabled.</span></footer>
 <script>
 (function(){
-const form=document.getElementById('brief-form'), output=document.getElementById('output'), status=document.getElementById('status'), copy=document.getElementById('copy'), download=document.getElementById('download'), ai=document.getElementById('ai');
+const form=document.getElementById('brief-form');
+const output=document.getElementById('output');
+const status=document.getElementById('status');
+const copy=document.getElementById('copy');
+const download=document.getElementById('download');
+const ai=document.getElementById('ai');
 document.getElementById('year').textContent=new Date().getFullYear();
 let brief='', aiAnalysis='';
 function val(id){return document.getElementById(id).value.trim()||'Not specified';}
+function fullText(){return brief+(aiAnalysis?'\n\nAI PROPOSAL OUTLINE\n\n'+aiAnalysis:'');}
 form.addEventListener('submit',function(e){
  e.preventDefault();
  if(!form.reportValidity())return;
@@ -60,24 +66,59 @@ form.addEventListener('submit',function(e){
  'Project / idea: '+val('project'),
  'Industry: '+val('industry'),
  'Main focus: '+val('focus'),'',
- '1. Current challenge',''+val('challenge'),'',
- '2. Intended audience',''+val('audience'),'',
- '3. Desired outcome',''+val('outcome'),'',
+ '1. Current challenge',val('challenge'),'',
+ '2. Intended audience',val('audience'),'',
+ '3. Desired outcome',val('outcome'),'',
  '4. Indicative budget: '+val('budget'),
  '5. Target timeline: '+val('timeline'),'',
- '6. Other requirements',''+val('constraints'),'',
+ '6. Other requirements',val('constraints'),'',
  'Suggested next steps:',
  '• Confirm the business problem and priority.',
  '• Agree the scope, deliverables and success measures.',
- '• Confirm timeline and written quote before any paid work.',
- '',
- 'Note: This brief was assembled locally from the information entered by the user. AI analysis is optional and only runs when requested.'
+ '• Confirm timeline and written quote before any paid work.','',
+ 'Note: This brief was assembled locally. AI analysis is optional and only runs when requested.'
  ].join('\n');
- output.textContent=brief;copy.disabled=false;download.disabled=false;ai.disabled=false;aiAnalysis='';status.textContent='Brief created locally. Nothing has been sent.';
+ aiAnalysis='';
+ output.textContent=brief;
+ copy.disabled=false;
+ download.disabled=false;
+ ai.disabled=false;
+ status.textContent='Brief created locally. Nothing has been sent.';
 });
-function fullText(){return brief+(aiAnalysis?'\\n\\nAI PROPOSAL OUTLINE\\n\\n'+aiAnalysis:'');}\nai.addEventListener('click',async function(){if(!brief)return;ai.disabled=true;status.textContent='Asking the text-only AI assistant…';try{const response=await fetch('/api/ai-assist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brief})});let data={};try{data=await response.json();}catch(e){}if(!response.ok||!data.ok)throw new Error(data.error||'AI analysis could not be completed.');aiAnalysis=String(data.analysis||'').trim();output.textContent=fullText();status.textContent='AI analysis complete. No video generation was used.';}catch(e){status.textContent=e.message||'AI service temporarily unavailable. Your brief is still available.';}finally{ai.disabled=false;}});\ncopy.addEventListener('click',async function(){if(!brief)return;try{await navigator.clipboard.writeText(fullText());status.textContent='Brief and any AI analysis copied to clipboard.';}catch(e){status.textContent='Copy was blocked by the browser. Select the text and copy it manually.';}});
-download.addEventListener('click',function(){if(!brief)return;const blob=new Blob([brief+(aiAnalysis?'\n\nAI PROPOSAL OUTLINE\n\n'+aiAnalysis:'')],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='apluscity-project-brief.txt';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);status.textContent='Text file prepared.';});
-form.addEventListener('reset',function(){brief='';aiAnalysis='';ai.disabled=true;output.innerHTML='<span class="empty">Your structured project brief will appear here after you complete the form. You can copy it or save it as a text file.</span>';copy.disabled=true;download.disabled=true;status.textContent='';});
+ai.addEventListener('click',async function(){
+ if(!brief)return;
+ ai.disabled=true;
+ status.textContent='Asking the text-only AI assistant…';
+ try{
+  const response=await fetch('/api/ai-assist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brief})});
+  let data={};
+  try{data=await response.json();}catch(e){}
+  if(!response.ok||!data.ok)throw new Error(data.error||'AI analysis could not be completed.');
+  aiAnalysis=String(data.analysis||'').trim();
+  output.textContent=fullText();
+  status.textContent='AI analysis complete. No video generation was used.';
+ }catch(e){
+  status.textContent=e.message||'AI service temporarily unavailable. Your brief is still available.';
+ }finally{ai.disabled=false;}
+});
+copy.addEventListener('click',async function(){
+ if(!brief)return;
+ try{await navigator.clipboard.writeText(fullText());status.textContent='Brief and any AI analysis copied to clipboard.';}
+ catch(e){status.textContent='Copy was blocked by the browser. Select the text and copy it manually.';}
+});
+download.addEventListener('click',function(){
+ if(!brief)return;
+ const blob=new Blob([fullText()],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='apluscity-project-brief.txt';
+ document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ status.textContent='Text file prepared.';
+});
+form.addEventListener('reset',function(){
+ brief='';aiAnalysis='';ai.disabled=true;
+ output.innerHTML='<span class="empty">Your structured project brief will appear here after you complete the form. You can copy it or save it as a text file.</span>';
+ copy.disabled=true;download.disabled=true;status.textContent='';
+});
 })();
 </script>
 </body>
