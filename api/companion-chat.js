@@ -46,10 +46,10 @@ module.exports = async function handler(req, res) {
     }
     if (action === 'history') {
       const [messages,memories]=await Promise.all([
-        db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&select=id,role,content,created_at&order=created_at.asc&limit=100'),
+        db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&select=id,role,content,created_at&order=created_at.desc&limit=100'),
         db('companion_memories?user_id=eq.'+encodeURIComponent(user.id)+'&select=id,memory,category,updated_at&order=updated_at.desc&limit='+MAX_MEMORIES)
       ]);
-      return res.status(200).json({ok:true,messages:messages||[],memories:memories||[]});
+      return res.status(200).json({ok:true,messages:(messages||[]).reverse(),memories:memories||[]});
     }
     if (action !== 'chat') return res.status(400).json({ok:false,error:'Unknown action.'});
     const message=String(body.message||'').trim();
