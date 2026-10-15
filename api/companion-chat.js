@@ -81,6 +81,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ok:true,messages:(messages||[]).reverse(),memories:memories||[]});
     }
     if (action !== 'chat') return res.status(400).json({ok:false,error:'Unknown action.'});
+    const speculative = body.speculative === true;
     const responseStyle = ['adaptive','brief','detailed'].includes(String(body.responseStyle||'')) ? String(body.responseStyle) : 'adaptive';
     const responseStyleInstruction = responseStyle === 'brief' ? 'Keep the answer especially brief: usually 1-3 sentences, with no extra sections unless essential.' : responseStyle === 'detailed' ? 'Give a fuller explanation with clear headings or numbered steps when helpful, but avoid unnecessary repetition.' : 'Use natural judgment: short for simple messages and step-by-step for complex tasks.';
     const intentLabels = {continue:'continuing an existing task',code:'coding or website work',translate:'translation or language help',write:'writing or editing text',plan:'planning next steps',explain:'asking for an explanation or answer',talk:'personal conversation',general:'general message'};
