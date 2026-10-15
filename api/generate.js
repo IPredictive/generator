@@ -58,8 +58,7 @@ module.exports = async function handler(req, res) {
         seconds,
         size: '720P',
         aspect_ratio: aspect,
-        n: 1,
-        negative_prompt: 'distorted product, warped logo, unreadable text, extra objects, flicker, low quality'
+        n: 1
       })
     });
 
