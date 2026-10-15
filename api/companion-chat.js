@@ -142,7 +142,7 @@ module.exports = async function handler(req, res) {
     } catch(error) {
       console.error('Companion request failed:',String(error).slice(0,300));
       if(!res.headersSent)return res.status(502).json({ok:false,error:error.name==='AbortError'?'The companion took too long to respond. Please try again.':'The companion service is temporarily unavailable.'});
-      try{res.write('event: error\\ndata: '+JSON.stringify({error:'The companion service is temporarily unavailable.'})+'\\n\\n')}catch(_){}
+      try{res.write('event: error\ndata: '+JSON.stringify({error:'The companion service is temporarily unavailable.'})+'\n\n')}catch(_){}
       return res.end();
     } finally {clearTimeout(timeout)}
   } catch(error) {
