@@ -94,7 +94,7 @@ module.exports = async function handler(req, res) {
       res.setHeader('Connection','keep-alive');
       res.setHeader('X-Accel-Buffering','no');
       if(typeof res.flushHeaders==='function')res.flushHeaders();
-      const sendEvent=(event,payload)=>res.write('event: '+event+'\\ndata: '+JSON.stringify(payload)+'\\n\\n');
+      const sendEvent=(event,payload)=>res.write('event: '+event+'\ndata: '+JSON.stringify(payload)+'\n\n');
       const reader=aiRes.body.getReader();
       const decoder=new TextDecoder();
       let pending='',fullReply='',visibleSent=0,streamError=null;
@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
         const part=await reader.read();
         if(part.done)break;
         pending+=decoder.decode(part.value,{stream:true});
-        const lines=pending.split(/\\r?\\n/);pending=lines.pop()||'';
+        const lines=pending.split(/\r?\n/);pending=lines.pop()||'';
         for(const line of lines){
           if(!line.startsWith('data:'))continue;
           const payload=line.slice(5).trim();
@@ -125,9 +125,9 @@ module.exports = async function handler(req, res) {
       fullReply+=decoder.decode();
       if(!fullReply.trim()){sendEvent('error',{error:'The AI returned an empty reply. Please try again.'});return res.end()}
       let proposed=[];
-      const match=fullReply.match(/<COMPANION_META>([\\s\\S]*?)<\\/COMPANION_META>/);
+      const match=fullReply.match(/<COMPANION_META>([\s\S]*?)<\/COMPANION_META>/);
       let reply=fullReply;
-      if(match){try{const parsed=JSON.parse(match[1]);if(Array.isArray(parsed.memories))proposed=parsed.memories.slice(0,2)}catch(_){}reply=reply.replace(/<COMPANION_META>[\\s\\S]*?<\\/COMPANION_META>/,'').trim()}
+      if(match){try{const parsed=JSON.parse(match[1]);if(Array.isArray(parsed.memories))proposed=parsed.memories.slice(0,2)}catch(_){}reply=reply.replace(/<COMPANION_META>[\s\S]*?<\/COMPANION_META>/,'').trim()}
       if(reply.length>visibleSent)sendEvent('delta',{text:reply.slice(visibleSent)});
       if(streamError)console.error('Companion stream warning:',String(streamError));
       // Save chat and any approved durable memories concurrently to reduce response latency.
