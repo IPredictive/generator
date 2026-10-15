@@ -28,14 +28,19 @@ create index if not exists companion_memories_user_updated_idx
 alter table public.companion_messages enable row level security;
 alter table public.companion_memories enable row level security;
 drop policy if exists "Users can read own companion messages" on public.companion_messages;
-create policy "Users can read own companion messages" on public.companion_messages for select to authenticated using (auth.uid() = user_id);
+create policy "Users can read own companion messages" on public.companion_messages for select to authenticated using ((select auth.uid()) = user_id);
 drop policy if exists "Users can add own companion messages" on public.companion_messages;
-create policy "Users can add own companion messages" on public.companion_messages for insert to authenticated with check (auth.uid() = user_id);
+create policy "Users can add own companion messages" on public.companion_messages for insert to authenticated with check ((select auth.uid()) = user_id);
 drop policy if exists "Users can delete own companion messages" on public.companion_messages;
 create policy "Users can delete own companion messages" on public.companion_messages for delete to authenticated using (auth.uid() = user_id);
 drop policy if exists "Users can read own companion memories" on public.companion_memories;
 create policy "Users can read own companion memories" on public.companion_memories for select to authenticated using (auth.uid() = user_id);
+drop policy if exists "Users can add own companion memories" on public.companion_memories;
+create policy "Users can add own companion memories" on public.companion_memories for insert to authenticated with check ((select auth.uid()) = user_id);
 drop policy if exists "Users can update own companion memories" on public.companion_memories;
 create policy "Users can update own companion memories" on public.companion_memories for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "Users can delete own companion memories" on public.companion_memories;
 create policy "Users can delete own companion memories" on public.companion_memories for delete to authenticated using (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.companion_memories to authenticated;
+grant select, insert, delete on public.companion_messages to authenticated;
