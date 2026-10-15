@@ -118,7 +118,7 @@ function createSegmentedRenderer(bubble){
   const match=/[.!?。！？]\s+|\n\s*\n/.exec(rest);
   if(match)return rest.slice(0,match.index+match[0].length);
   if(finished)return rest;
-  if(rest.length>=110){const cut=rest.lastIndexOf(' ',110);if(cut>35)return rest.slice(0,cut+1);}
+  if(rest.length>=110){const cut=rest.lastIndexOf(' ',110);if(cut>35)return rest.slice(0,cut+1);const cjk=rest.lastIndexOf('，',110);if(cjk>35)return rest.slice(0,cjk+1);const semi=rest.lastIndexOf('；',110);if(semi>35)return rest.slice(0,semi+1);}
   return '';
  }
  function pump(){
