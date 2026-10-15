@@ -1,0 +1,20 @@
+{
+  "id": "/app.html",
+  "name": "AplusCity Companion",
+  "short_name": "Companion",
+  "description": "Your private AI companion and personal memory space.",
+  "start_url": "/app.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f9ff",
+  "theme_color": "#f7f9ff",
+  "icons": [
+    {
+      "src": "/companion-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
