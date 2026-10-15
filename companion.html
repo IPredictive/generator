@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172a">
+<meta name="description" content="AplusCity Companion — a private AI companion that can remember what matters to you, with your permission.">
+<title>AplusCity Companion — A companion that remembers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#10172a;--panel:#182239;--panel2:#202d47;--text:#f6f7fb;--muted:#b5c0d5;--line:rgba(255,255,255,.13);--mint:#b7f3d7;--gold:#f4d6a0;--danger:#ffb5b5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0,rgba(183,243,215,.12),transparent 34%),radial-gradient(ellipse at 95% 30%,rgba(244,214,160,.09),transparent 28%),var(--bg);color:var(--text);font:16px/1.65 "DM Sans",sans-serif;min-height:100vh}button,input,textarea{font:inherit}button{cursor:pointer}.wrap{width:min(1080px,calc(100% - 32px));margin:auto}.nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0;border-bottom:1px solid var(--line)}.brand{font:800 18px Manrope,sans-serif;letter-spacing:-.04em}.brand span{color:var(--mint)}.nav a{color:var(--muted);text-decoration:none;font-size:14px}.hero{padding:44px 0 26px;max-width:760px}.eyebrow{color:var(--mint);text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:700}.hero h1{font:800 clamp(34px,6vw,58px)/1.08 Manrope,sans-serif;letter-spacing:-.05em;margin:12px 0 16px}.hero p{color:var(--muted);font-size:18px;max-width:650px;margin:0}.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.85fr);gap:18px;align-items:start;padding-bottom:54px}.card{border:1px solid var(--line);background:rgba(24,34,57,.88);border-radius:22px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.12)}.card h2{font:700 20px Manrope,sans-serif;margin:0 0 8px}.muted{color:var(--muted)}.small{font-size:13px}.auth{display:grid;gap:12px;margin-top:16px}.field{display:grid;gap:6px}.field label{font-size:13px;color:var(--muted)}input,textarea{width:100%;border:1px solid var(--line);border-radius:12px;background:#10182b;color:var(--text);padding:12px 14px;outline:none}input:focus,textarea:focus{border-color:var(--mint);box-shadow:0 0 0 3px rgba(183,243,215,.1)}.btn{border:0;border-radius:12px;padding:12px 16px;background:var(--mint);color:#132337;font-weight:700}.btn:disabled{opacity:.55;cursor:wait}.btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}.btnrow{display:flex;flex-wrap:wrap;gap:9px}.status{min-height:24px;color:var(--gold);font-size:13px;margin-top:10px}.chat-shell{display:flex;flex-direction:column;min-height:490px}.chat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px}.avatar{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,var(--mint),var(--gold));color:#182239;font-size:22px;flex-shrink:0}.headleft{display:flex;align-items:center;gap:12px}.messages{display:flex;flex-direction:column;gap:12px;padding:18px 0;flex:1;max-height:490px;overflow:auto}.bubble{max-width:88%;border-radius:16px;padding:12px 15px;white-space:pre-wrap;overflow-wrap:anywhere}.bubble.ai{align-self:flex-start;background:var(--panel2);border:1px solid var(--line)}.bubble.user{align-self:flex-end;background:var(--mint);color:#132337}.composer{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:end;border-top:1px solid var(--line);padding-top:14px}.composer textarea{resize:vertical;min-height:50px;max-height:140px}.composer .btn{height:50px}.features{display:grid;gap:12px;margin-top:16px}.feature{display:flex;gap:12px;align-items:flex-start}.ico{width:34px;height:34px;border-radius:11px;background:rgba(183,243,215,.1);display:grid;place-items:center;flex-shrink:0}.feature strong{display:block;font-size:14px}.feature span{font-size:13px;color:var(--muted)}.memory-list{display:grid;gap:9px;margin:14px 0}.memory-item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;display:flex;justify-content:space-between;gap:10px;align-items:start}.memory-item button{background:transparent;color:var(--muted);border:0;text-decoration:underline;font-size:12px}.hidden{display:none!important}.foot{padding:20px 0 30px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}.notice{border:1px solid rgba(244,214,160,.3);background:rgba(244,214,160,.06);border-radius:14px;padding:13px 14px;color:var(--muted);font-size:13px;margin-top:16px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.hero{padding-top:32px}.card{padding:17px}.chat-shell{min-height:420px}.messages{max-height:430px}.nav{padding:16px 0}.hero p{font-size:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="nav"><div class="brand">AplusCity <span>Companion</span></div><a href="/">← AplusCity home</a></header>
+<section class="hero"><div class="eyebrow">A little more understood, every day</div><h1>A companion that remembers what matters to you.</h1><p>A calm, private place to talk about your day, share your stories and feel heard. With your permission, your companion can remember the things you want it to remember.</p></section>
+<main class="layout">
+<section class="card">
+<div id="auth-panel">
+<h2>Your private space</h2><p class="muted small">Create an account to keep your conversations and memories available when you sign in on another device.</p>
+<form id="auth-form" class="auth">
+<div class="field"><label for="email">Email address</label><input id="email" type="email" autocomplete="email" required placeholder="you@example.com"></div>
+<div class="field"><label for="password">Password (at least 8 characters)</label><input id="password" type="password" autocomplete="current-password" minlength="8" required placeholder="Choose a private password"></div>
+<div class="btnrow"><button class="btn" id="signup" type="button">Create account</button><button class="btn secondary" id="login" type="submit">Sign in</button></div>
+</form><div id="auth-status" class="status" role="status"></div>
+<div class="notice">Your companion is AI, not a human or emergency service. Share only what you feel comfortable saving. You can review and delete saved memories.</div>
+</div>
+<div id="chat-panel" class="hidden">
+<div class="chat-shell">
+<div class="chat-head"><div class="headleft"><div class="avatar">✦</div><div><strong id="welcome-name">Your companion</strong><div class="muted small">Here to listen, at your pace</div></div></div><button class="btn ghost" id="signout" type="button">Sign out</button></div>
+<div class="messages" id="messages" aria-live="polite"><div class="bubble ai">Hello. I'm glad you're here. What has been on your mind today?</div></div>
+<form id="chat-form" class="composer"><textarea id="message" rows="1" maxlength="3000" required placeholder="Tell me about your day…"></textarea><button class="btn" id="send" type="submit">Send</button></form>
+<div id="chat-status" class="status" role="status"></div>
+</div>
+</div>
+</section>
+<aside>
+<section class="card"><h2>What makes this different?</h2><div class="features">
+<div class="feature"><div class="ico">♡</div><div><strong>A gentler conversation</strong><span>Thoughtful replies, without rushing to judge or fix everything.</span></div></div>
+<div class="feature"><div class="ico">✧</div><div><strong>Memory with permission</strong><span>Important preferences and stories can carry forward into future chats.</span></div></div>
+<div class="feature"><div class="ico">⌂</div><div><strong>Your space, your choice</strong><span>Review or remove saved memories. You decide what stays.</span></div></div>
+</div></section>
+<section class="card hidden" id="memory-panel" style="margin-top:16px"><h2>What I remember</h2><p class="muted small">Only memories saved from your conversations appear here.</p><div id="memory-list" class="memory-list"></div><div class="btnrow"><button class="btn secondary" id="refresh-memory" type="button">Refresh memories</button><button class="btn ghost" id="delete-all" type="button">Delete all memories</button></div><div id="memory-status" class="status" role="status"></div></section>
+<div class="notice">Early version: text chat first. Voice calling and proactive check-ins are not enabled yet. AI responses may use service quota or incur charges.</div>
+</aside>
+</main>
+<footer class="foot">AplusCity Companion · Built to support human connection, not replace it. If you are in immediate danger or need urgent help, contact local emergency services or someone you trust.</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+let client=null,session=null,busy=false;
+const authPanel=$('auth-panel'),chatPanel=$('chat-panel'),authStatus=$('auth-status'),chatStatus=$('chat-status'),memoryPanel=$('memory-panel');
+async function setup(){
+ try{
+  const r=await fetch('/api/companion-config',{cache:'no-store'});const cfg=await r.json();
+  if(!r.ok||!cfg.url||!cfg.anonKey||!window.supabase){authStatus.textContent=cfg.error||'Account service is not configured yet. The companion database needs to be connected before accounts and cross-device memory can work.'; $('signup').disabled=true;$('login').disabled=true;return}
+  client=window.supabase.createClient(cfg.url,cfg.anonKey);
+  const {data}=await client.auth.getSession();session=data.session;
+  client.auth.onAuthStateChange((_event,next)=>{session=next;renderAuth();if(session)loadHistoryAndMemories()});
+  renderAuth();
+  if(session) await loadHistoryAndMemories();
+ }catch(e){authStatus.textContent='Could not initialize account services. Please try again later.'}
+}
+function renderAuth(){const logged=!!session;authPanel.classList.toggle('hidden',logged);chatPanel.classList.toggle('hidden',!logged);memoryPanel.classList.toggle('hidden',!logged);if(logged){$('welcome-name').textContent='Your companion';authStatus.textContent='';}}
+async function signUp(){if(!client)return;authStatus.textContent='Creating your private account…';const email=$('email').value.trim(),password=$('password').value;if(!email||password.length<8){authStatus.textContent='Enter a valid email and a password with at least 8 characters.';return}const {data,error}=await client.auth.signUp({email,password});if(error){authStatus.textContent=error.message;return}if(data.session){session=data.session;renderAuth();await loadHistoryAndMemories()}else{authStatus.textContent='Account created. Check your email for a confirmation link, then sign in.'}}
+async function signIn(e){e.preventDefault();if(!client)return;authStatus.textContent='Signing in…';const {data,error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){authStatus.textContent=error.message;return}session=data.session;renderAuth();await loadHistoryAndMemories()}
+function addBubble(text,who){const el=document.createElement('div');el.className='bubble '+(who==='user'?'user':'ai');el.textContent=text;$('messages').appendChild(el);$('messages').scrollTop=$('messages').scrollHeight;return el}
+async function api(action,body){if(!session)throw new Error('Please sign in again.');const r=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action,...(body||{})})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Request failed.');return d}
+async function loadHistoryAndMemories(){if(!session)return;try{const d=await api('history');$('messages').replaceChildren();if(!d.messages||!d.messages.length){addBubble("Hello. I'm glad you're here. What has been on your mind today?",'ai')}else d.messages.forEach(m=>addBubble(m.content,m.role));renderMemories(d.memories||[])}catch(e){chatStatus.textContent=e.message}}
+function renderMemories(items){const list=$('memory-list');list.replaceChildren();if(!items.length){const p=document.createElement('p');p.className='muted small';p.textContent='No saved memories yet. As we talk, I may suggest a small number of useful details to remember.';list.appendChild(p);return}items.forEach(m=>{const row=document.createElement('div');row.className='memory-item';const span=document.createElement('span');span.textContent=m.memory;const b=document.createElement('button');b.type='button';b.textContent='Forget';b.addEventListener('click',async()=>{try{await api('forget',{id:m.id});row.remove();chatStatus.textContent='Memory deleted.'}catch(e){$('memory-status').textContent=e.message}});row.append(span,b);list.appendChild(row)})}
+async function send(e){e.preventDefault();if(busy||!session)return;const content=$('message').value.trim();if(!content)return;busy=true;$('send').disabled=true;$('message').value='';addBubble(content,'user');const loading=addBubble('Let me think about that…','ai');chatStatus.textContent='';try{const d=await api('chat',{message:content});loading.textContent=d.reply;renderMemories(d.memories||[])}catch(err){loading.textContent='I’m sorry, I could not reply just now. '+err.message}finally{busy=false;$('send').disabled=false;$('message').focus()}}
+$('signup').addEventListener('click',signUp);$('auth-form').addEventListener('submit',signIn);$('chat-form').addEventListener('submit',send);$('signout').addEventListener('click',async()=>{if(client)await client.auth.signOut();session=null;renderAuth();$('messages').replaceChildren();});$('refresh-memory').addEventListener('click',async()=>{try{const d=await api('history');renderMemories(d.memories||[]);$('memory-status').textContent='Memories refreshed.'}catch(e){$('memory-status').textContent=e.message}});$('delete-all').addEventListener('click',async()=>{if(!confirm('Delete all saved memories? This cannot be undone.'))return;try{await api('forget-all');renderMemories([]);$('memory-status').textContent='All saved memories deleted.'}catch(e){$('memory-status').textContent=e.message}});
+setup();
+})();
+</script>
+</body>
+</html>
