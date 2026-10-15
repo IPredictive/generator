@@ -55,6 +55,22 @@
     }
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 
+
+    /* Fix price-card contrast: dark cards use light text; featured card uses dark text */
+    .price-card:not(.featured) .price-label{color:#aab4c8}
+    .price-card:not(.featured) .price{color:#f7f8fc}
+    .price-card:not(.featured) p{color:#aab4c8}
+    .price-card:not(.featured) ul{color:#e5eaf4}
+    .price-card:not(.featured) .btn.ghost{color:#f7f8fc;background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.22)}
+    .price-card:not(.featured) .btn.ghost:hover{color:var(--lime);border-color:var(--lime)}
+    .price-card.featured .price-label{color:#344052}
+    .price-card.featured .price,.price-card.featured .price span{color:#101528}
+    .price-card.featured p{color:#394457}
+    .price-card.featured ul{color:#273348}
+    .price-card.featured li:before{color:#46621a}
+    .price-card.featured .btn{background:#101528;color:#fff;border-color:#101528}
+    .price-card.featured .btn:hover{background:#273348;border-color:#273348}
+
   </style>
 </head>
 <body>
