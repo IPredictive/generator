@@ -88,7 +88,8 @@ function predictIntent(text){
  for(const rule of rules)if(rule.patterns.some(p=>p.test(t)))return rule;
  return {code:'general',label:'your message and its context'};
 }
-function updateIntentHint(text){const el=$('intent-hint');if(!el)return;const t=String(text||'').trim();el.textContent=t.length<5?'I’ll adapt to what you’re trying to do as you type.':'Thinking ahead: '+predictIntent(t).label+'.';}
+function intentLabelFor(intent,text){if(/[\\u3400-\\u9fff]/.test(String(text||'')))return ({continue:'继续之前的工作',code:'编程或网站开发',translate:'翻译或语言协助',write:'写作或润色',plan:'规划下一步',explain:'解释或回答问题',talk:'日常交流',general:'理解消息与上下文'})[intent.code]||'理解你的消息';return intent.label;}
+function updateIntentHint(text){const el=$('intent-hint');if(!el)return;const t=String(text||'').trim();const chinese=/[\\u3400-\\u9fff]/.test(t);el.textContent=t.length<5?(chinese?'我会根据你输入的内容，提前判断如何回应。':'I’ll adapt to what you’re trying to do as you type.'):(chinese?'正在判断：':'Thinking ahead: ')+intentLabelFor(predictIntent(t),t)+(chinese?'。':'.');}
 let prefetchTimer=null,prefetchJob=null;
 function cancelPrefetch(){clearTimeout(prefetchTimer);prefetchTimer=null;if(prefetchJob&&!prefetchJob.done)prefetchJob.controller.abort();prefetchJob=null}
 async function streamChat(message,onDelta,options={}){
@@ -112,9 +113,9 @@ $('message').addEventListener('input',()=>{
  prefetchJob=job;
  prefetchTimer=setTimeout(()=>{
   if(prefetchJob!==job||$('message').value.trim()!==draft||busy)return;
-  chatStatus.textContent='Preparing: '+intent.label+'…';
+  chatStatus.textContent=(/[\\u3400-\\u9fff]/.test(draft)?'正在提前准备：':'Preparing: ')+intentLabelFor(intent,draft)+'…';
   job.promise=streamChat(draft,text=>{job.reply=text;if(job.visible){job.bubble.textContent=text;$('messages').scrollTop=$('messages').scrollHeight}},{speculative:true,signal:controller.signal,intent:intent.code})
-   .then(result=>{job.done=true;job.result=result;if(prefetchJob===job&&$('message').value.trim()===draft)chatStatus.textContent='Ready when you are.';return result})
+   .then(result=>{job.done=true;job.result=result;if(prefetchJob===job&&$('message').value.trim()===draft)chatStatus.textContent=/[\\u3400-\\u9fff]/.test(draft)?'已经准备好，可以发送了。':'Ready when you are.';return result})
    .catch(error=>{job.done=true;job.error=error;throw error});
   job.promise.catch(()=>{});
  },650);
