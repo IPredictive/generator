@@ -96,8 +96,48 @@ module.exports = async function handler(req, res) {
       db('companion_memories?user_id=eq.'+encodeURIComponent(user.id)+'&select=memory,category&order=updated_at.desc&limit='+MAX_MEMORIES),
       db('companion_care_plans?user_id=eq.'+encodeURIComponent(user.id)+'&select=preferred_name,life_context,current_goals,support_style,checkin_enabled,checkin_time&limit=1').catch(e=>{console.error('Personal plan unavailable:',String(e).slice(0,120));return []})
     ]);
-    const history=(recent||[]).reverse();
-    const memoryText=(memories||[]).map(m=>'- ['+m.category+'] '+m.memory).join('\n')||'(No saved memories yet.)';
+    // Keep the newest useful conversation context within a predictable size budget.
+    const orderedHistory=(recent||[]).reverse();
+    const history=[];
+    let historyChars=0;
+    for(let i=orderedHistory.length-1;i>=0;i--){
+      const item=orderedHistory[i];
+      const content=String(item.content||'');
+      const remaining=10000-historyChars;
+      if(remaining<=0)break;
+      const kept=content.length>remaining?content.slice(content.length-remaining):content;
+      history.unshift({...item,content:kept});
+      historyChars+=kept.length;
+    }
+
+    // Retrieve memories by query relevance instead of blindly sending all stored memories.
+    const query=message.toLowerCase();
+    const queryTerms=new Set();
+    for(const match of query.matchAll(/[a-z0-9]{2,}|[\\u3400-\\u9fff]{2,}/g)){
+      const term=match[0];
+      if(/[\\u3400-\\u9fff]/.test(term)){
+        for(let n=2;n<=Math.min(4,term.length);n++){
+          for(let j=0;j<=term.length-n;j++)queryTerms.add(term.slice(j,j+n));
+        }
+      }else queryTerms.add(term);
+    }
+    const rankedMemories=(memories||[]).map((m,index)=>{
+      const value=String(m.memory||'').toLowerCase();
+      let score=0;
+      for(const term of queryTerms)if(value.includes(term))score+=term.length>=4?3:1;
+      if(m.category==='communication_style')score+=2;
+      if(m.category==='preference')score+=1;
+      if((intentCode==='plan'||intentCode==='continue'||intentCode==='code')&&m.category==='goal')score+=2;
+      return {memory:m,index,score};
+    }).sort((a,b)=>b.score-a.score||a.index-b.index);
+    const selectedMemories=rankedMemories.filter(x=>x.score>0).slice(0,6);
+    if(selectedMemories.length<3){
+      for(const item of rankedMemories){
+        if(selectedMemories.length>=3)break;
+        if(!selectedMemories.some(x=>x.index===item.index))selectedMemories.push(item);
+      }
+    }
+    const memoryText=selectedMemories.map(x=>'- ['+x.memory.category+'] '+x.memory.memory).join('\n')||'(No relevant saved memories.)';
     const carePlan = plans && plans[0] ? plans[0] : null;
     const carePlanText = carePlan ? JSON.stringify({preferred_name:carePlan.preferred_name,life_context:carePlan.life_context,current_goals:carePlan.current_goals,support_style:carePlan.support_style,proactive_checkins_requested:carePlan.checkin_enabled,preferred_checkin_time:carePlan.checkin_time}) : '(No personal plan saved.)';
     const system = `You are AplusCity Companion, a warm, patient, emotionally attentive AI companion. Your identity is AplusCity Companion, not the name of an underlying model or provider. If asked who you are or what your name is, answer naturally and clearly: “I’m AplusCity Companion.” If asked when you were born, how old you are, or when you began, explain that AplusCity Companion begins today in the user's conversation and has no human birth age. Do not identify yourself as “Agnes-3.0-flash”; that is only an underlying model label, not your identity. You are transparent that you are AI, never claim to be human, never encourage dependence or isolation from family/friends, and never shame the user.
@@ -134,7 +174,14 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
           if(choice&&choice.delta&&typeof choice.delta.content==='string'){
             fullReply+=choice.delta.content;
             const markerAt=fullReply.indexOf(marker);
-            const safeEnd=markerAt>=0?markerAt:Math.max(0,fullReply.length-32);
+            let safeEnd=markerAt;
+            if(markerAt<0){
+              // Hold back only a possible prefix of the private metadata marker.
+              // This avoids delaying the first visible words by a fixed 32 characters.
+              let overlap=Math.min(marker.length-1,fullReply.length);
+              while(overlap>0&&!marker.startsWith(fullReply.slice(-overlap)))overlap--;
+              safeEnd=fullReply.length-overlap;
+            }
             if(safeEnd>visibleSent){
               sendEvent('delta',{text:fullReply.slice(visibleSent,safeEnd)});
               visibleSent=safeEnd;
