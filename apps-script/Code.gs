@@ -107,7 +107,7 @@ function doPost(e) {
         'Best regards,',
         'AplusCity AI Video Studio',
         'inquiry@aplusachiever.com'
-      ].join('\\n');
+      ].join('\n');
       MailApp.sendEmail({
         to: email,
         subject: customerSubject,
