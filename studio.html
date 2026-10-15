@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1020">
-<meta name="description" content="Create a free business project brief locally, with optional AI-powered text analysis. Video generation is disabled.">
-<title>Free Project Brief Builder — AplusCity</title>
+<meta name="description" content="AI-first business analysis from your project goals, challenges and desired outcomes. Video generation is disabled.">
+<title>AI Business Analysis Studio — AplusCity</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -15,10 +15,10 @@
 <body>
 <header class="wrap nav"><a class="brand" href="/"><span class="mark">A+</span><span>AplusCity<small>AI BUSINESS STUDIO</small></span></a><a class="back" href="/">← Back to AplusCity</a></header>
 <main class="wrap">
-<section class="intro"><div class="eyebrow">Free planning tool · Optional text AI</div><h1>Turn a business idea<br><span style="color:var(--lime)">into a clear project brief.</span></h1><p>Use this simple worksheet to organise your goals, audience, challenges and desired outcome before contacting us. Your brief is created locally. If you choose “Analyse with AI”, only the brief is sent to our text-only AI endpoint. Video generation is disabled.</p><span class="badge">✓ Free local brief · ✓ Optional text AI · ✓ Video generation disabled</span></section>
+<section class="intro"><div class="eyebrow">AI BUSINESS ANALYSIS · PRACTICAL NEXT STEPS</div><h1>Get an AI analysis.<br><span style="color:var(--lime)">Turn ideas into action.</span></h1><p>Describe your business challenge and let our text-only AI assistant develop a practical proposal outline: recommended steps, deliverables, success measures, risks and questions to clarify. Your information is sent for AI analysis only when you click the analysis button. Video generation is disabled.</p><span class="badge">✓ AI-led recommendations · ✓ Brief copy & export · ✓ No video generation</span></section>
 <section class="layout">
 <div class="panel">
-<h2>01 / Your project details</h2>
+<h2>01 / Tell the AI about your project</h2>
 <form id="brief-form">
 <div class="field"><label for="project">Project or idea *</label><input id="project" type="text" required maxlength="140" placeholder="e.g. Improve customer enquiries for my business"></div>
 <div class="grid2">
@@ -33,19 +33,19 @@
 <div class="field"><label for="timeline">Target timeline</label><select id="timeline"><option>Flexible</option><option>Within 2 weeks</option><option>Within 1 month</option><option>Within 3 months</option></select></div>
 </div>
 <div class="field"><label for="constraints">Other requirements (optional)</label><textarea id="constraints" maxlength="1000" placeholder="Tools you already use, language needs, limitations or important details."></textarea></div>
-<div class="actions"><button class="btn" type="submit">Create my free brief ↗</button><button class="btn secondary" type="reset">Clear form</button></div>
+<div class="actions"><button class="btn" type="submit">Analyse my project with AI ↗</button><button class="btn secondary" type="reset">Clear form</button></div>
 </form>
 </div>
 <div class="panel">
-<h2>02 / Your project brief</h2>
-<div class="notice"><strong>You are in control.</strong><br>Creating a brief is local and does not call AI. The optional text analysis uses the existing Agnes API key on the server and may use account quota or incur charges. No video generation is called.</div>
+<h2>02 / AI analysis & project brief</h2>
+<div class="notice"><strong>AI-first, with your permission.</strong><br>Click “Analyse my project with AI” to send the project brief to our text-only AI service. This may use Agnes account quota or incur charges. The local brief remains available if AI is temporarily unavailable. Video generation is disabled.</div>
 <div id="output" class="output"><span class="empty">Your structured project brief will appear here after you complete the form. You can copy it or save it as a text file.</span></div>
-<div class="actions"><button class="btn secondary" id="ai" type="button" disabled>Analyse with AI ↗</button><button class="btn secondary" id="copy" type="button" disabled>Copy brief + analysis</button><button class="btn secondary" id="download" type="button" disabled>Save as .txt</button><a class="btn" href="/#contact">Contact AplusCity ↗</a></div>
+<div class="actions"><button class="btn" id="ai" type="button" disabled>Run AI analysis again ↗</button><button class="btn secondary" id="copy" type="button" disabled>Copy brief + analysis</button><button class="btn secondary" id="download" type="button" disabled>Save as .txt</button><a class="btn" href="/#contact">Contact AplusCity ↗</a></div>
 <div id="status" class="status" role="status" aria-live="polite"></div>
 </div>
 </section>
 </main>
-<footer class="wrap footer"><span>© <span id="year"></span> AplusCity · AI Business Studio</span><span>Free local brief builder. Optional AI text analysis may use account quota. Video generation is disabled.</span></footer>
+<footer class="wrap footer"><span>© <span id="year"></span> AplusCity · AI Business Studio</span><span>AI-powered business planning. AI requests may use account quota or incur charges. Video generation is disabled.</span></footer>
 <script>
 (function(){
 const form=document.getElementById('brief-form');
@@ -83,7 +83,8 @@ form.addEventListener('submit',function(e){
  copy.disabled=false;
  download.disabled=false;
  ai.disabled=false;
- status.textContent='Brief created locally. Nothing has been sent.';
+ status.textContent='Project brief prepared. Starting your requested AI analysis…';
+ ai.click();
 });
 ai.addEventListener('click',async function(){
  if(!brief)return;
