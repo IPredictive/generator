@@ -109,6 +109,7 @@ let prefetchTimer=null,prefetchJob=null;
 function cancelPrefetch(){clearTimeout(prefetchTimer);prefetchTimer=null;if(prefetchJob&&!prefetchJob.done)prefetchJob.controller.abort();prefetchJob=null}
 function createSegmentedRenderer(bubble){
  const target=bubble.firstElementChild||bubble;
+ target.textContent='';
  let source='',shown=0,timer=null,finished=false,resolveFinish;
  const finishPromise=new Promise(resolve=>{resolveFinish=resolve});
  function nextChunk(){
@@ -170,7 +171,7 @@ async function send(e){
  try{
   if(job){
    job.visible=true;job.bubble=loading;job.renderer=renderer;
-   renderer.push(job.reply||'I’ve started thinking about that…');
+   renderer.push(job.reply||'');
    const d=job.result||await job.promise;
    renderer.push(d.reply);await renderer.finish();
    await api('commit-prepared',{message:content,reply:d.reply,preparedMemories:d.preparedMemories||[]});
