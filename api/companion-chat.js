@@ -5,6 +5,9 @@ const MODEL = 'agnes-3.0-flash';
 const MAX_MESSAGE = 3000;
 const MAX_HISTORY = 12;
 const MAX_MEMORIES = 30;
+const RATE_WINDOW_MS = 60 * 60 * 1000;
+const MAX_CHAT_REQUESTS_PER_WINDOW = 30;
+const requestBuckets = new Map();
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -27,6 +30,21 @@ module.exports = async function handler(req, res) {
     if (!user || !user.id) return res.status(401).json({ok:false,error:'Please sign in again.'});
     const body = req.body || {};
     const action = String(body.action || 'chat');
+    if (action === 'chat') {
+      const now = Date.now();
+      for (const [key, bucket] of requestBuckets) {
+        if (now - bucket.start >= RATE_WINDOW_MS) requestBuckets.delete(key);
+      }
+      let bucket = requestBuckets.get(user.id);
+      if (!bucket || now - bucket.start >= RATE_WINDOW_MS) {
+        bucket = { start: now, count: 0 };
+        requestBuckets.set(user.id, bucket);
+      }
+      if (bucket.count >= MAX_CHAT_REQUESTS_PER_WINDOW) {
+        return res.status(429).json({ok:false,error:'You have reached the temporary chat limit. Please try again later.'});
+      }
+      bucket.count += 1;
+    }
     const headers = {apikey:service,Authorization:'Bearer '+service,'Content-Type':'application/json'};
     async function db(path, options={}) {
       const r = await fetch(base + '/rest/v1/' + path, {headers:{...headers,...(options.headers||{})},method:options.method||'GET',body:options.body?JSON.stringify(options.body):undefined});
