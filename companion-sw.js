@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apluscity-companion-shell-v1';
+const CACHE_NAME = 'apluscity-companion-shell-v2';
 const SHELL = ['/app.html', '/companion-icon.svg', '/companion-manifest.json'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
