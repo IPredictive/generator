@@ -82,10 +82,42 @@ function doPost(e) {
     MailApp.sendEmail({
       to: NOTIFY_EMAIL,
       subject: subject,
-      body: body,
+      body: body + '\n\nReference code: ' + referenceCode,
       replyTo: email,
       name: 'AplusCity Website'
     });
+
+    // Send the customer a confirmation email. Do not lose the successful inquiry
+    // response if the customer email cannot be delivered; the inquiry is already saved.
+    try {
+      const customerSubject = 'We received your AplusCity inquiry — ' + referenceCode;
+      const customerBody = [
+        'Hi ' + name + ',',
+        '',
+        'Thank you for contacting AplusCity AI Video Studio. We have received your inquiry.',
+        '',
+        'Your reference code is: ' + referenceCode,
+        'Please keep this code for your records when following up with us.',
+        '',
+        'Package: ' + (packageName || 'Not selected'),
+        'Business: ' + (business || 'Not provided'),
+        '',
+        'We will review your project details and get back to you by email.',
+        '',
+        'Best regards,',
+        'AplusCity AI Video Studio',
+        'inquiry@aplusachiever.com'
+      ].join('\\n');
+      MailApp.sendEmail({
+        to: email,
+        subject: customerSubject,
+        body: customerBody,
+        name: 'AplusCity AI Video Studio',
+        replyTo: NOTIFY_EMAIL
+      });
+    } catch (customerMailError) {
+      console.error('Customer confirmation email failed: ' + customerMailError);
+    }
 
     return jsonOutput_({ ok: true, message: 'Your inquiry has been received.', referenceCode: referenceCode });
   } catch (err) {
