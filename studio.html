@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1020">
-<meta name="description" content="Create a free business project brief locally in your browser. No AI API calls or paid generation.">
+<meta name="description" content="Create a free business project brief locally, with optional AI-powered text analysis. Video generation is disabled.">
 <title>Free Project Brief Builder — AplusCity</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
 <body>
 <header class="wrap nav"><a class="brand" href="/"><span class="mark">A+</span><span>AplusCity<small>AI BUSINESS STUDIO</small></span></a><a class="back" href="/">← Back to AplusCity</a></header>
 <main class="wrap">
-<section class="intro"><div class="eyebrow">Free planning tool · No AI API</div><h1>Turn a business idea<br><span style="color:var(--lime)">into a clear project brief.</span></h1><p>Use this simple worksheet to organise your goals, audience, challenges and desired outcome before contacting us. Everything is generated in your browser—no paid AI service is called and no form data is sent until you choose to contact us.</p><span class="badge">✓ Free to use · ✓ No AI generation charges · ✓ Runs in your browser</span></section>
+<section class="intro"><div class="eyebrow">Free planning tool · Optional text AI</div><h1>Turn a business idea<br><span style="color:var(--lime)">into a clear project brief.</span></h1><p>Use this simple worksheet to organise your goals, audience, challenges and desired outcome before contacting us. Your brief is created locally. If you choose “Analyse with AI”, only the brief is sent to our text-only AI endpoint. Video generation is disabled.</p><span class="badge">✓ Free local brief · ✓ Optional text AI · ✓ Video generation disabled</span></section>
 <section class="layout">
 <div class="panel">
 <h2>01 / Your project details</h2>
@@ -38,19 +38,19 @@
 </div>
 <div class="panel">
 <h2>02 / Your project brief</h2>
-<div class="notice"><strong>Cost-safe by design.</strong><br>This tool uses a local template. It does not call Agnes AI, OpenAI or any paid generation API.</div>
+<div class="notice"><strong>You are in control.</strong><br>Creating a brief is local and does not call AI. The optional text analysis uses the existing Agnes API key on the server and may use account quota or incur charges. No video generation is called.</div>
 <div id="output" class="output"><span class="empty">Your structured project brief will appear here after you complete the form. You can copy it or save it as a text file.</span></div>
-<div class="actions"><button class="btn secondary" id="copy" type="button" disabled>Copy brief</button><button class="btn secondary" id="download" type="button" disabled>Save as .txt</button><a class="btn" href="/#contact">Contact AplusCity ↗</a></div>
+<div class="actions"><button class="btn secondary" id="ai" type="button" disabled>Analyse with AI ↗</button><button class="btn secondary" id="copy" type="button" disabled>Copy brief + analysis</button><button class="btn secondary" id="download" type="button" disabled>Save as .txt</button><a class="btn" href="/#contact">Contact AplusCity ↗</a></div>
 <div id="status" class="status" role="status" aria-live="polite"></div>
 </div>
 </section>
 </main>
-<footer class="wrap footer"><span>© <span id="year"></span> AplusCity · AI Business Studio</span><span>Free planning worksheet. No paid AI generation or automatic charges.</span></footer>
+<footer class="wrap footer"><span>© <span id="year"></span> AplusCity · AI Business Studio</span><span>Free local brief builder. Optional AI text analysis may use account quota. Video generation is disabled.</span></footer>
 <script>
 (function(){
-const form=document.getElementById('brief-form'), output=document.getElementById('output'), status=document.getElementById('status'), copy=document.getElementById('copy'), download=document.getElementById('download');
+const form=document.getElementById('brief-form'), output=document.getElementById('output'), status=document.getElementById('status'), copy=document.getElementById('copy'), download=document.getElementById('download'), ai=document.getElementById('ai');
 document.getElementById('year').textContent=new Date().getFullYear();
-let brief='';
+let brief='', aiAnalysis='';
 function val(id){return document.getElementById(id).value.trim()||'Not specified';}
 form.addEventListener('submit',function(e){
  e.preventDefault();
@@ -71,13 +71,13 @@ form.addEventListener('submit',function(e){
  '• Agree the scope, deliverables and success measures.',
  '• Confirm timeline and written quote before any paid work.',
  '',
- 'Note: This brief was assembled locally from the information entered by the user. No AI API was called.'
+ 'Note: This brief was assembled locally from the information entered by the user. AI analysis is optional and only runs when requested.'
  ].join('\n');
- output.textContent=brief;copy.disabled=false;download.disabled=false;status.textContent='Brief created in your browser. Nothing has been sent.';
+ output.textContent=brief;copy.disabled=false;download.disabled=false;ai.disabled=false;aiAnalysis='';status.textContent='Brief created locally. Nothing has been sent.';
 });
-copy.addEventListener('click',async function(){if(!brief)return;try{await navigator.clipboard.writeText(brief);status.textContent='Brief copied to clipboard.';}catch(e){status.textContent='Copy was blocked by the browser. Select the brief text and copy it manually.';}});
+function fullText(){return brief+(aiAnalysis?'\\n\\nAI PROPOSAL OUTLINE\\n\\n'+aiAnalysis:'');}\nai.addEventListener('click',async function(){if(!brief)return;ai.disabled=true;status.textContent='Asking the text-only AI assistant…';try{const response=await fetch('/api/ai-assist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({brief})});let data={};try{data=await response.json();}catch(e){}if(!response.ok||!data.ok)throw new Error(data.error||'AI analysis could not be completed.');aiAnalysis=String(data.analysis||'').trim();output.textContent=fullText();status.textContent='AI analysis complete. No video generation was used.';}catch(e){status.textContent=e.message||'AI service temporarily unavailable. Your brief is still available.';}finally{ai.disabled=false;}});\ncopy.addEventListener('click',async function(){if(!brief)return;try{await navigator.clipboard.writeText(fullText());status.textContent='Brief and any AI analysis copied to clipboard.';}catch(e){status.textContent='Copy was blocked by the browser. Select the text and copy it manually.';}});
 download.addEventListener('click',function(){if(!brief)return;const blob=new Blob([brief+(aiAnalysis?'\n\nAI PROPOSAL OUTLINE\n\n'+aiAnalysis:'')],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='apluscity-project-brief.txt';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);status.textContent='Text file prepared.';});
-form.addEventListener('reset',function(){brief='';output.innerHTML='<span class="empty">Your structured project brief will appear here after you complete the form. You can copy it or save it as a text file.</span>';copy.disabled=true;download.disabled=true;status.textContent='';});
+form.addEventListener('reset',function(){brief='';aiAnalysis='';ai.disabled=true;output.innerHTML='<span class="empty">Your structured project brief will appear here after you complete the form. You can copy it or save it as a text file.</span>';copy.disabled=true;download.disabled=true;status.textContent='';});
 })();
 </script>
 </body>
