@@ -76,7 +76,7 @@ form.addEventListener('submit',function(e){
  output.textContent=brief;copy.disabled=false;download.disabled=false;status.textContent='Brief created in your browser. Nothing has been sent.';
 });
 copy.addEventListener('click',async function(){if(!brief)return;try{await navigator.clipboard.writeText(brief);status.textContent='Brief copied to clipboard.';}catch(e){status.textContent='Copy was blocked by the browser. Select the brief text and copy it manually.';}});
-download.addEventListener('click',function(){if(!brief)return;const blob=new Blob([brief],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='apluscity-project-brief.txt';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);status.textContent='Text file prepared.';});
+download.addEventListener('click',function(){if(!brief)return;const blob=new Blob([brief+(aiAnalysis?'\n\nAI PROPOSAL OUTLINE\n\n'+aiAnalysis:'')],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='apluscity-project-brief.txt';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);status.textContent='Text file prepared.';});
 form.addEventListener('reset',function(){brief='';output.innerHTML='<span class="empty">Your structured project brief will appear here after you complete the form. You can copy it or save it as a text file.</span>';copy.disabled=true;download.disabled=true;status.textContent='';});
 })();
 </script>
