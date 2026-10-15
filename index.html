@@ -74,6 +74,18 @@
     <section class="section">
       <div class="wrap"><div class="cta"><div><div class="eyebrow">Your next campaign starts here</div><h2>Have a product.<br>Let's make it <span class="gradient">stand out.</span></h2><p>Tell us what you sell and who you want to reach. We'll help shape the first idea.</p></div><a class="btn" href="#contact">Start a project ↗</a></div></div>
     </section>
+    <section class="section" id="track">
+      <div class="wrap" style="max-width:760px">
+        <div class="eyebrow">Project tracker</div>
+        <h2 style="font-size:clamp(30px,4vw,42px);margin:15px 0">Track your inquiry.</h2>
+        <p style="color:var(--muted);max-width:560px">Already contacted us? Enter the reference code from your confirmation email to check the latest status.</p>
+        <form id="status-form" class="form" style="margin-top:24px;grid-template-columns:minmax(0,1fr) auto;align-items:end">
+          <div class="field"><label for="status-code">Your reference code</label><input id="status-code" name="code" required maxlength="20" placeholder="APC-7K4M-92QX" autocomplete="off" autocapitalize="characters"></div>
+          <div class="field"><button class="btn" type="submit">Check status ↗</button></div>
+          <div id="status-result" role="status" aria-live="polite" style="grid-column:1/-1;color:var(--muted);font-size:14px"></div>
+        </form>
+      </div>
+    </section>
     <section class="section" id="contact">
       <div class="wrap contact-grid">
         <div class="contact-copy"><div class="eyebrow">Let's talk</div><h2 style="font-size:clamp(34px,4vw,48px);margin:15px 0">Tell us what<br>you're building.</h2><p>Share a few details and we'll prepare the next step. No complicated brief needed.</p><p class="micro">SINGAPORE · SERVING BUSINESSES ACROSS SOUTHEAST ASIA</p></div>
@@ -116,6 +128,33 @@
         copyCodeButton.textContent=copied?'Copied!':'Please copy the code manually';
       }
       window.setTimeout(function(){copyCodeButton.textContent='Copy code';},2200);
+    });
+    document.getElementById('status-form').addEventListener('submit', async function(event){
+      event.preventDefault();
+      var form=this;
+      var button=form.querySelector('button[type="submit"]');
+      var resultBox=document.getElementById('status-result');
+      var code=document.getElementById('status-code').value.trim().toUpperCase();
+      resultBox.textContent='Checking your inquiry…';
+      button.disabled=true;
+      try {
+        var response=await fetch('/api/status?code='+encodeURIComponent(code), {method:'GET', cache:'no-store'});
+        var result=await response.json();
+        if (!response.ok || !result || result.ok !== true) throw new Error((result && result.error) || 'We could not find that reference code.');
+        var statusText=result.status || 'Received';
+        var dateText=result.submittedDate ? ' · Submitted '+result.submittedDate : '';
+        var packageText=result.package ? ' · '+result.package : '';
+        resultBox.textContent='Status: '+statusText+dateText+packageText+'. Keep your reference code for any follow-up.';
+        resultBox.style.color='var(--lime)';
+      } catch(error) {
+        resultBox.textContent=(error && error.message) || 'Status lookup is temporarily unavailable. Please try again later.';
+        resultBox.style.color='var(--muted)';
+      } finally {
+        button.disabled=false;
+      }
+    });
+    document.getElementById('status-code').addEventListener('input', function(){
+      this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');
     });
     document.getElementById('inquiry-form').addEventListener('submit', async function(event){
       event.preventDefault();
