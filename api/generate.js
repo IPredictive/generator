@@ -1,4 +1,19 @@
 const API_ROOT = 'https://apihub.agnes-ai.com';
+function readableError(value) {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (value && typeof value === 'object') {
+    for (const key of ['message', 'detail', 'error_description', 'error', 'msg', 'code']) {
+      const nested = value[key];
+      if (typeof nested === 'string' && nested.trim()) return nested.trim();
+      if (nested && typeof nested === 'object') {
+        const inner = readableError(nested);
+        if (inner) return inner;
+      }
+    }
+    try { return JSON.stringify(value); } catch (_) {}
+  }
+  return '';
+}
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ok:false,error:'Method not allowed'}); }
@@ -21,7 +36,7 @@ module.exports = async function handler(req, res) {
     });
     const data = await upstream.json().catch(()=>({}));
     if (!upstream.ok) {
-      const msg = String((data && (data.message || data.error || data.detail)) || 'Agnes AI rejected the request. Check API key, account access and image format.');
+      const msg = readableError(data) || 'Agnes AI rejected the request (HTTP ' + upstream.status + '). Check API key, account access, quota and image parameters.';
       return res.status(upstream.status === 401 ? 401 : upstream.status === 429 ? 429 : 502).json({ok:false,error:msg.slice(0,350)});
     }
     const requestId = data.video_id || data.id || data.task_id;
