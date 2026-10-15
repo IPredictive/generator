@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
     if (!user || !user.id) return res.status(401).json({ok:false,error:'Please sign in again.'});
     const body = req.body || {};
     const action = String(body.action || 'chat');
-    if (action === 'chat') {
+    if (action === 'chat' && !body.speculative) {
       const now = Date.now();
       for (const [key, bucket] of requestBuckets) {
         if (now - bucket.start >= RATE_WINDOW_MS) requestBuckets.delete(key);
@@ -50,6 +50,16 @@ module.exports = async function handler(req, res) {
       const raw = await r.text(); let data=null; try{data=raw?JSON.parse(raw):null}catch(_){}
       if(!r.ok) { console.error('Companion database request failed:',r.status,raw.slice(0,300)); throw new Error('The private memory store is temporarily unavailable.'); }
       return data;
+    }
+    if (action === 'commit-prepared') {
+      const message=String(body.message||'').trim(), reply=String(body.reply||'').trim();
+      if(!message||message.length>MAX_MESSAGE||!reply||reply.length>12000) return res.status(400).json({ok:false,error:'Prepared reply is invalid or expired. Please send your message again.'});
+      const validCats=new Set(['preference','personal_story','important_person','routine','communication_style','goal']);
+      const proposed=Array.isArray(body.preparedMemories)?body.preparedMemories.slice(0,2):[];
+      const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!/(password|passcode|credit card|bank account|诊断|病史|medical condition|ssn|身份证|账户号码)/i.test(m.memory)).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
+      await db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[{user_id:user.id,role:'user',content:message},{user_id:user.id,role:'assistant',content:reply}]});
+      if(safe.length)await db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save prepared Companion memory:',String(e).slice(0,160))});
+      return res.status(200).json({ok:true});
     }
     if (action === 'forget') {
       const id=String(body.id||'');
@@ -135,14 +145,16 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       if(match){try{const parsed=JSON.parse(match[1]);if(Array.isArray(parsed.memories))proposed=parsed.memories.slice(0,2)}catch(_){}reply=reply.replace(/<COMPANION_META>[\s\S]*?<\/COMPANION_META>/,'').trim()}
       if(reply.length>visibleSent)sendEvent('delta',{text:reply.slice(visibleSent)});
       if(streamError)console.error('Companion stream warning:',String(streamError));
-      // Save chat and any approved durable memories concurrently to reduce response latency.
       const validCats=new Set(['preference','personal_story','important_person','routine','communication_style','goal']);
       const existing=new Set((memories||[]).map(m=>String(m.memory).toLowerCase()));
       const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!/(password|passcode|credit card|bank account|诊断|病史|medical condition|ssn|身份证|账户号码)/i.test(m.memory)&&!existing.has(m.memory.trim().toLowerCase())).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
-      const writes=[db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[{user_id:user.id,role:'user',content:message},{user_id:user.id,role:'assistant',content:reply}]})];
-      if(safe.length)writes.push(db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save Companion memory:',String(e).slice(0,160));return null}));
-      await Promise.all(writes);
-      sendEvent('done',{ok:true,memories:memories||[]});
+      if(!speculative){
+        // Save only after the user actually sends the message.
+        const writes=[db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[{user_id:user.id,role:'user',content:message},{user_id:user.id,role:'assistant',content:reply}]})];
+        if(safe.length)writes.push(db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save Companion memory:',String(e).slice(0,160));return null}));
+        await Promise.all(writes);
+      }
+      sendEvent('done',{ok:true,memories:memories||[],preparedMemories:safe.map(m=>({memory:m.memory,category:m.category}))});
       return res.end();
     } catch(error) {
       console.error('Companion request failed:',String(error).slice(0,300));
