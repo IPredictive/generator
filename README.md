@@ -1,6 +1,6 @@
-# AplusCity AI Video Studio
+# AplusCity AI Business Studio
 
-A responsive, dark-tech landing page for AplusCity's AI-assisted short-video services, aimed at Singapore and Southeast Asian businesses.
+A responsive dark-tech website for AplusCity's AI business planning, digital workflow improvement, website/growth projects, and customer enquiries.
 
 Production site: https://generator-gamma-plum.vercel.app/  
 Inquiry contact: inquiry@aplusachiever.com  
@@ -8,61 +8,50 @@ Source: https://github.com/IPredictive/generator
 
 ## Current implementation
 
-- `index.html`: responsive marketing page, service packages, inquiry form, reference-code display, and project-status tracker.
-- `api/inquiry.js`: validates inquiry submissions and forwards them to the configured Google Apps Script web app. A successful response must include a reference code.
-- `api/status.js`: looks up inquiry status by reference code through the same Google Apps Script web app.
-- `api/generate.js`: starts an asynchronous image-to-video job through Agnes AI Video 2.5 Flash using the modern request schema.
-- `api/generate-status.js`: polls the Agnes AI Video 2.5 Flash task using the model ID and returns its status and video URL when complete.
+- `index.html`: business-services homepage, service engagement overview, customer enquiry form, reference-code display, and project-status tracker.
+- `studio.html`: free project brief builder. It assembles a structured brief locally in the visitor's browser and supports copy/save as a text file. It does not call a paid AI API.
+- `api/inquiry.js`: validates enquiry submissions and forwards them to the configured Google Apps Script web app. A successful response must include a reference code.
+- `api/status.js`: looks up enquiry status by reference code through the same Google Apps Script web app.
+- `api/generate.js` and `api/generate-status.js`: retired endpoints. Both return HTTP 410 and do not contact Agnes AI.
 
-The inquiry endpoints depend on the Google Apps Script deployment configured in the source. The video-generation endpoints require the server-side `AGNES_API_KEY` environment variable in Vercel. Do not put secrets in client-side HTML or commit them to GitHub.
+## Cost-control decision
 
-## Inquiry flow
+Paid video generation has been intentionally retired. The site no longer offers a live video generation action. The video generation and polling endpoints are disabled in code to prevent calls to the paid provider. The `AGNES_API_KEY` environment variable is no longer required; it can be removed from Vercel after confirming the latest deployment is live.
 
-1. A visitor completes the form on the site.
-2. The browser sends the form data to `POST /api/inquiry`.
+The project brief builder is a browser-only template, not an AI model. It does not upload brief form data unless the visitor separately chooses to submit the contact form.
+
+## Enquiry flow
+
+1. A visitor completes the enquiry form on the site.
+2. The browser sends form data to `POST /api/inquiry`.
 3. The API forwards the request to Google Apps Script.
 4. The form displays the reference code returned by the backend.
 5. The visitor can enter that code in the project tracker, which calls `GET /api/status?code=...`.
 
-A successful browser message only confirms that the backend returned a valid reference code. Email notifications and spreadsheet persistence depend on the deployed Google Apps Script implementation and should be tested separately.
+A success message confirms that the backend returned a valid reference code. Email notifications and spreadsheet persistence depend on the deployed Google Apps Script implementation and should be tested separately.
 
 ## Deployment on Vercel
 
 The repository is linked to Vercel. With Git integration enabled, changes pushed to the production branch should trigger a deployment.
 
 After each change:
-1. Open the Vercel project and confirm the latest deployment completed successfully.
+1. Confirm the latest production deployment completed successfully.
 2. Open the production site in a private/incognito window.
-3. Test the inquiry form with a controlled test submission and save its reference code.
-4. Check the new record in the connected Google Sheet and confirm any intended email notification reaches `inquiry@aplusachiever.com`.
-5. Test the status tracker using the test reference code.
-6. Test on both desktop and mobile.
+3. Test the free brief builder, including copy and text-file export.
+4. Test the enquiry form with a controlled test submission and save its reference code.
+5. Check the connected Google Sheet and confirm any intended email notification reaches `inquiry@aplusachiever.com`.
+6. Test the enquiry status tracker and verify desktop/mobile layouts.
 
-## Vercel environment variables
+## Environment variables and privacy
 
-Set secrets in **Vercel → Project Settings → Environment Variables**, not in repository files.
-
-- `AGNES_API_KEY`: required for Agnes AI video generation. The current integration uses model `agnes-video-2.5-flash`, endpoint `POST https://apihub.agnes-ai.com/v1/videos`, 720P output, and 5/8/12-second clips. Redeploy after changing environment variables.
-
-The Video 2.5 API uses `mode`, `first_frame`, `seconds`, `size`, and `aspect_ratio`; do not send legacy v2.0 fields such as `num_frames`, `width`, `height`, or `frame_rate`. Video status polling includes `model_name=agnes-video-2.5-flash`. Model access, queue availability, and pricing remain subject to the Agnes account and provider.
-
-The inquiry and status APIs currently contain a Google Apps Script deployment URL. If that deployment is rotated, update both `api/inquiry.js` and `api/status.js` together.
-
-## Pre-launch checklist
-
-- [ ] Confirm the Google Apps Script web app is deployed and accessible to the Vercel API.
-- [ ] Submit a test inquiry and confirm the record is saved.
-- [ ] Confirm notification/reply email behavior and check spam folders.
-- [ ] Confirm a reference code can retrieve the correct inquiry status.
-- [ ] Add a privacy notice explaining how names, business details, email addresses, and inquiry content are used and retained.
-- [ ] Restrict access to the connected spreadsheet and Apps Script project.
-- [ ] Verify Agnes AI account access, model parameters, quota, pricing, and commercial-use terms before selling automated video generation.
-- [ ] Confirm package pricing against actual generation costs and editing time.
-- [ ] Use only portfolio images and videos that AplusCity has permission to publish.
+- `AGNES_API_KEY` is not needed for the retired video feature and can be removed from Vercel after the new deployment is live.
+- The enquiry and status APIs depend on the Google Apps Script deployment URL configured in source.
+- Add a privacy notice explaining how names, business details, email addresses, and enquiry content are used and retained.
+- Restrict access to the connected spreadsheet and Apps Script project.
 
 ## Troubleshooting
 
-- **Inquiry fails:** inspect the Vercel function logs for `/api/inquiry`, then check the Apps Script deployment and execution logs.
-- **Reference code is shown but no email arrives:** check the Apps Script email logic, recipient address, authorization, quotas, and spam folder. The Vercel endpoint itself does not send email.
-- **Status lookup fails:** confirm the reference code format and that the Apps Script status action reads the same data source used by inquiry submission.
-- **Video generation says unconfigured:** set `AGNES_API_KEY` in the Vercel project and redeploy.
+- **Enquiry fails:** inspect Vercel function logs for `/api/inquiry`, then check the Apps Script deployment and execution logs.
+- **Reference code is shown but no email arrives:** check Apps Script email logic, recipient address, authorization, quotas, and spam folder. The Vercel endpoint itself does not send email.
+- **Status lookup fails:** confirm the reference code format and that Apps Script reads the same data source used by enquiry submission.
+- **Old video button or behavior appears:** hard-refresh the page and confirm the latest production deployment is active. The API endpoints return HTTP 410 and no longer call Agnes AI.
