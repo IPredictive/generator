@@ -78,7 +78,14 @@ module.exports = async function handler(req, res) {
         db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&select=id,role,content,created_at&order=created_at.desc&limit=100'),
         db('companion_memories?user_id=eq.'+encodeURIComponent(user.id)+'&select=id,memory,category,updated_at&order=updated_at.desc&limit='+MAX_MEMORIES)
       ]);
-      return res.status(200).json({ok:true,messages:(messages||[]).reverse(),memories:memories||[]});
+      const orderedMessages=(messages||[]).reverse().sort((a,b)=>{
+        const ta=Date.parse(a.created_at||'')||0,tb=Date.parse(b.created_at||'')||0;
+        if(ta!==tb)return ta-tb;
+        // If two messages share a timestamp, show the user's message before the companion's reply.
+        const roleOrder={user:0,assistant:1};
+        return (roleOrder[a.role]??2)-(roleOrder[b.role]??2);
+      });
+      return res.status(200).json({ok:true,messages:orderedMessages,memories:memories||[]});
     }
     if (action !== 'chat') return res.status(400).json({ok:false,error:'Unknown action.'});
     const speculative = body.speculative === true;
