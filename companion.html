@@ -107,7 +107,7 @@ $('message').addEventListener('input',()=>{
  const draft=$('message').value.trim();
  updateIntentHint(draft);
  cancelPrefetch();
- if(draft.length<12||!session)return;
+ if(draft.length<8||!session)return;
  const style=$('reply-style').value,controller=new AbortController(),intent=predictIntent(draft);
  const job={text:draft,style,intent:intent.code,controller,visible:false,done:false,reply:'',promise:null};
  prefetchJob=job;
@@ -118,7 +118,7 @@ $('message').addEventListener('input',()=>{
    .then(result=>{job.done=true;job.result=result;if(prefetchJob===job&&$('message').value.trim()===draft)chatStatus.textContent=/[\\u3400-\\u9fff]/.test(draft)?'已经准备好，可以发送了。':'Ready when you are.';return result})
    .catch(error=>{job.done=true;job.error=error;throw error});
   job.promise.catch(()=>{});
- },650);
+ },400);
 });
 $('reply-style').addEventListener('change',cancelPrefetch);
 updateIntentHint('');
