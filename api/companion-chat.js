@@ -1,6 +1,6 @@
 // AplusCity Companion text chat with persistent per-user memories.
-// Requires AGNES_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in Vercel.
-// The service-role key is server-only and must never be returned to the browser.
+// Requires AGNES_API_KEY, SUPABASE_URL and SUPABASE_ANON_KEY in Vercel.
+// All database requests use the signed-in user's access token and row-level security.
 const MODEL = 'agnes-3.0-flash';
 const MAX_MESSAGE = 3000;
 const MAX_HISTORY = 12;
@@ -16,9 +16,8 @@ module.exports = async function handler(req, res) {
 
   const base = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
   const anon = process.env.SUPABASE_ANON_KEY;
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const apiKey = process.env.AGNES_API_KEY;
-  if (!base || !anon || !service) return res.status(503).json({ok:false,error:'Companion accounts and long-term memory are not configured yet. Please contact the site administrator.'});
+  if (!base || !anon) return res.status(503).json({ok:false,error:'Companion accounts and long-term memory are not configured yet. Please contact the site administrator.'});
   if (!apiKey) return res.status(503).json({ok:false,error:'AI chat is not configured yet.'});
 
   const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i,'').trim();
@@ -45,7 +44,7 @@ module.exports = async function handler(req, res) {
       }
       bucket.count += 1;
     }
-    const headers = {apikey:service,Authorization:'Bearer '+service,'Content-Type':'application/json'};
+    const headers = {apikey:anon,Authorization:'Bearer '+token,'Content-Type':'application/json'};
     async function db(path, options={}) {
       const r = await fetch(base + '/rest/v1/' + path, {headers:{...headers,...(options.headers||{})},method:options.method||'GET',body:options.body?JSON.stringify(options.body):undefined});
       const raw = await r.text(); let data=null; try{data=raw?JSON.parse(raw):null}catch(_){}
