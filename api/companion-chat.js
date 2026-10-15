@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
     // Retrieve memories by query relevance instead of blindly sending all stored memories.
     const query=message.toLowerCase();
     const queryTerms=new Set();
-    for(const match of query.matchAll(/[a-z0-9]{2,}|[\\u3400-\\u9fff]{2,}/g)){
+    for(const match of query.matchAll(/[a-z0-9]{2,}|[\u3400-\u9fff]{2,}/g)){
       const term=match[0];
       if(/[\u3400-\u9fff]/.test(term)){
         for(let n=2;n<=Math.min(4,term.length);n++){
