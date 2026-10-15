@@ -12,6 +12,7 @@
 const SPREADSHEET_ID = '1EDnEeWa6fzqZ_RATicIznZ4FWqcq28i7zeeWPGSmPco';
 const NOTIFY_EMAIL = 'inquiry@aplusachiever.com';
 const SHEET_NAME = 'Inquiries';
+const CODE_PREFIX = 'APC';
 
 function doGet() {
   return jsonOutput_({
@@ -46,10 +47,18 @@ function doPost(e) {
       const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       sheet = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
       if (sheet.getLastRow() === 0) {
-        sheet.appendRow(['Submitted At', 'Name', 'Business', 'Email', 'Package', 'Project Details', 'Status']);
+        sheet.appendRow(['Submitted At', 'Reference Code', 'Name', 'Business', 'Email', 'Package', 'Project Details', 'Status']);
         sheet.setFrozenRows(1);
+      } else {
+        // Add the reference-code column to an existing sheet if it uses the earlier layout.
+        const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+        if (header.indexOf('Reference Code') === -1) {
+          sheet.insertColumnAfter(1);
+          sheet.getRange(1, 2).setValue('Reference Code');
+        }
       }
-      sheet.appendRow([new Date(), name, business, email, packageName, details, 'New']);
+      const referenceCode = createReferenceCode_();
+      sheet.appendRow([new Date(), referenceCode, name, business, email, packageName, details, 'New']);
     } finally {
       lock.releaseLock();
     }
@@ -77,7 +86,7 @@ function doPost(e) {
       name: 'AplusCity Website'
     });
 
-    return jsonOutput_({ ok: true, message: 'Your inquiry has been received.' });
+    return jsonOutput_({ ok: true, message: 'Your inquiry has been received.', referenceCode: referenceCode });
   } catch (err) {
     console.error(err && err.stack ? err.stack : err);
     return jsonOutput_({ ok: false, error: 'We could not submit your inquiry right now. Please try again or email inquiry@aplusachiever.com directly.' });
@@ -85,12 +94,20 @@ function doPost(e) {
 }
 
 function parsePayload_(e) {
-  if (!e || !e.postData || !e.postData.contents) return {};
-  const contentType = String(e.postData.type || '').toLowerCase();
-  if (contentType.indexOf('application/json') !== -1) {
-    return JSON.parse(e.postData.contents);
+  if (!e || !e.postData || !e.postData.contents) return (e && e.parameter) || {};
+  const contents = String(e.postData.contents).trim();
+  // Accept JSON even when browsers send it as text/plain to avoid preflight/CORS issues.
+  if (contents.charAt(0) === '{') {
+    try { return JSON.parse(contents); } catch (err) { throw new Error('Invalid JSON request body.'); }
   }
   return e.parameter || {};
+}
+
+function createReferenceCode_() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let token = '';
+  for (let i = 0; i < 8; i++) token += chars.charAt(Math.floor(Math.random() * chars.length));
+  return CODE_PREFIX + '-' + token.slice(0, 4) + '-' + token.slice(4);
 }
 
 function clean_(value, maxLength) {
