@@ -14,7 +14,44 @@ const NOTIFY_EMAIL = 'inquiry@aplusachiever.com';
 const SHEET_NAME = 'Inquiries';
 const CODE_PREFIX = 'APC';
 
-function doGet() {
+function doGet(e) {
+  const action = e && e.parameter ? String(e.parameter.action || '') : '';
+  if (action === 'status') {
+    const code = clean_(e.parameter.code, 30).toUpperCase();
+    if (!/^APC-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(code)) {
+      return jsonOutput_({ ok: false, error: 'Please enter a valid reference code.' });
+    }
+    try {
+      const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
+      if (!sheet || sheet.getLastRow() < 2) {
+        return jsonOutput_({ ok: false, error: 'We could not find that reference code.' });
+      }
+      const values = sheet.getDataRange().getValues();
+      const headers = values[0].map(function(value) { return String(value).trim(); });
+      const codeCol = headers.indexOf('Reference Code');
+      const statusCol = headers.indexOf('Status');
+      const dateCol = headers.indexOf('Submitted At');
+      const packageCol = headers.indexOf('Package');
+      if (codeCol < 0) return jsonOutput_({ ok: false, error: 'Inquiry records are not configured correctly.' });
+      for (let i = 1; i < values.length; i++) {
+        if (String(values[i][codeCol]).trim().toUpperCase() === code) {
+          const rawStatus = statusCol >= 0 ? String(values[i][statusCol] || 'New').trim() : 'New';
+          const normalized = rawStatus.toLowerCase();
+          let status = 'Received';
+          if (normalized.indexOf('process') >= 0 || normalized.indexOf('progress') >= 0 || normalized.indexOf('review') >= 0) status = 'In progress';
+          if (normalized.indexOf('complete') >= 0 || normalized.indexOf('deliver') >= 0 || normalized.indexOf('done') >= 0) status = 'Completed';
+          const submitted = dateCol >= 0 && values[i][dateCol] instanceof Date
+            ? Utilities.formatDate(values[i][dateCol], Session.getScriptTimeZone(), 'dd MMM yyyy')
+            : '';
+          return jsonOutput_({ ok: true, referenceCode: code, status: status, submittedDate: submitted, package: packageCol >= 0 ? String(values[i][packageCol] || '') : '' });
+        }
+      }
+      return jsonOutput_({ ok: false, error: 'We could not find that reference code. Please check it and try again.' });
+    } catch (err) {
+      console.error(err && err.stack ? err.stack : err);
+      return jsonOutput_({ ok: false, error: 'Status lookup is temporarily unavailable. Please try again later.' });
+    }
+  }
   return jsonOutput_({
     ok: true,
     service: 'AplusCity inquiry endpoint',
