@@ -6,7 +6,7 @@ module.exports = async function handler(req, res) {
   const id = String((req.query && req.query.id) || '').trim();
   if (!/^[a-zA-Z0-9_-]{8,160}$/.test(id)) return res.status(400).json({ok:false,error:'Invalid generation task ID.'});
   try {
-    const upstream = await fetch(API_ROOT + '/agnesapi?video_id=' + encodeURIComponent(id), {headers:{Authorization:'Bearer ' + process.env.AGNES_API_KEY}});
+    const upstream = await fetch(API_ROOT + '/agnesapi?video_id=' + encodeURIComponent(id) + '&model_name=agnes-video-v2.0', {headers:{Authorization:'Bearer ' + process.env.AGNES_API_KEY}});
     const data = await upstream.json().catch(()=>({}));
     if (!upstream.ok) return res.status(502).json({ok:false,error:'Could not check the Agnes AI task status.'});
     const state = String(data.status || '').toLowerCase();
