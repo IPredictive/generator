@@ -11,8 +11,8 @@ Source: https://github.com/IPredictive/generator
 - `index.html`: responsive marketing page, service packages, inquiry form, reference-code display, and project-status tracker.
 - `api/inquiry.js`: validates inquiry submissions and forwards them to the configured Google Apps Script web app. A successful response must include a reference code.
 - `api/status.js`: looks up inquiry status by reference code through the same Google Apps Script web app.
-- `api/generate.js`: starts an asynchronous image-to-video job through Agnes AI.
-- `api/generate-status.js`: polls the Agnes AI task and returns its status and video URL when complete.
+- `api/generate.js`: starts an asynchronous image-to-video job through Agnes AI Video 2.5 Flash using the modern request schema.
+- `api/generate-status.js`: polls the Agnes AI Video 2.5 Flash task using the model ID and returns its status and video URL when complete.
 
 The inquiry endpoints depend on the Google Apps Script deployment configured in the source. The video-generation endpoints require the server-side `AGNES_API_KEY` environment variable in Vercel. Do not put secrets in client-side HTML or commit them to GitHub.
 
@@ -42,7 +42,9 @@ After each change:
 
 Set secrets in **Vercel → Project Settings → Environment Variables**, not in repository files.
 
-- `AGNES_API_KEY`: required for Agnes AI video generation. Redeploy after changing environment variables.
+- `AGNES_API_KEY`: required for Agnes AI video generation. The current integration uses model `agnes-video-2.5-flash`, endpoint `POST https://apihub.agnes-ai.com/v1/videos`, 720P output, and 5/8/12-second clips. Redeploy after changing environment variables.
+
+The Video 2.5 API uses `mode`, `first_frame`, `seconds`, `size`, and `aspect_ratio`; do not send legacy v2.0 fields such as `num_frames`, `width`, `height`, or `frame_rate`. Video status polling includes `model_name=agnes-video-2.5-flash`. Model access, queue availability, and pricing remain subject to the Agnes account and provider.
 
 The inquiry and status APIs currently contain a Google Apps Script deployment URL. If that deployment is rotated, update both `api/inquiry.js` and `api/status.js` together.
 
