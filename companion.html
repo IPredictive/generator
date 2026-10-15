@@ -107,6 +107,29 @@ function intentLabelFor(intent,text){if(/[\\u3400-\\u9fff]/.test(String(text||''
 function updateIntentHint(text){const el=$('intent-hint');if(!el)return;const t=String(text||'').trim();const chinese=/[\\u3400-\\u9fff]/.test(t);el.textContent=t.length<5?(chinese?'我会根据你输入的内容，提前判断如何回应。':'I’ll adapt to what you’re trying to do as you type.'):(chinese?'正在判断：':'Thinking ahead: ')+intentLabelFor(predictIntent(t),t)+(chinese?'。':'.');}
 let prefetchTimer=null,prefetchJob=null;
 function cancelPrefetch(){clearTimeout(prefetchTimer);prefetchTimer=null;if(prefetchJob&&!prefetchJob.done)prefetchJob.controller.abort();prefetchJob=null}
+function createSegmentedRenderer(bubble){
+ const target=bubble.firstElementChild||bubble;
+ let source='',shown=0,timer=null,finished=false,resolveFinish;
+ const finishPromise=new Promise(resolve=>{resolveFinish=resolve});
+ function nextChunk(){
+  const rest=source.slice(shown);
+  if(!rest)return '';
+  const match=/[.!?。！？]\s+|\n\s*\n/.exec(rest);
+  if(match)return rest.slice(0,match.index+match[0].length);
+  if(finished)return rest;
+  if(rest.length>=110){const cut=rest.lastIndexOf(' ',110);if(cut>35)return rest.slice(0,cut+1);}
+  return '';
+ }
+ function pump(){
+  if(timer)return;
+  const chunk=nextChunk();
+  if(!chunk){if(finished)resolveFinish();return;}
+  target.textContent+=chunk;shown+=chunk.length;
+  $('messages').scrollTop=$('messages').scrollHeight;
+  timer=setTimeout(()=>{timer=null;pump()},shown===chunk.length?80:620);
+ }
+ return {push(text){source=String(text||'');pump();},async finish(){finished=true;pump();await finishPromise;},flush(){finished=true;if(timer){clearTimeout(timer);timer=null;}target.textContent=source;shown=source.length;resolveFinish();}};
+}
 async function streamChat(message,onDelta,options={}){
  const intent=options.intent||predictIntent(message).code;
  const response=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'chat',message,responseStyle:$('reply-style').value,speculative:options.speculative===true,intent}),signal:options.signal});
@@ -129,7 +152,7 @@ $('message').addEventListener('input',()=>{
  prefetchTimer=setTimeout(()=>{
   if(prefetchJob!==job||$('message').value.trim()!==draft||busy)return;
   chatStatus.textContent=(/[\\u3400-\\u9fff]/.test(draft)?'正在提前准备：':'Preparing: ')+intentLabelFor(intent,draft)+'…';
-  job.promise=streamChat(draft,text=>{job.reply=text;if(job.visible){job.bubble.textContent=text;$('messages').scrollTop=$('messages').scrollHeight}},{speculative:true,signal:controller.signal,intent:intent.code})
+  job.promise=streamChat(draft,text=>{job.reply=text;if(job.visible&&job.renderer)job.renderer.push(text)},{speculative:true,signal:controller.signal,intent:intent.code})
    .then(result=>{job.done=true;job.result=result;if(prefetchJob===job&&$('message').value.trim()===draft)chatStatus.textContent=/[\\u3400-\\u9fff]/.test(draft)?'已经准备好，可以发送了。':'Ready when you are.';return result})
    .catch(error=>{job.done=true;job.error=error;throw error});
   job.promise.catch(()=>{});
@@ -143,19 +166,24 @@ async function send(e){
  const candidate=prefetchJob&&prefetchJob.text===content&&prefetchJob.style===$('reply-style').value?prefetchJob:null;
  const job=candidate&&candidate.promise?candidate:null;
  if(job){clearTimeout(prefetchTimer);prefetchTimer=null;prefetchJob=null}else cancelPrefetch();
+ const renderer=createSegmentedRenderer(loading);
  try{
   if(job){
-   job.visible=true;job.bubble=loading;loading.textContent=job.reply||'I’ve started thinking about that…';
+   job.visible=true;job.bubble=loading;job.renderer=renderer;
+   renderer.push(job.reply||'I’ve started thinking about that…');
    const d=job.result||await job.promise;
-   loading.textContent=d.reply;
+   renderer.push(d.reply);await renderer.finish();
    await api('commit-prepared',{message:content,reply:d.reply,preparedMemories:d.preparedMemories||[]});
    const saved=await api('history');renderMemories(saved.memories||[]);
   }else{
-   const d=await streamChat(content,text=>{loading.textContent=text;$('messages').scrollTop=$('messages').scrollHeight},{intent:predictIntent(content).code});
+   const d=await streamChat(content,text=>renderer.push(text),{intent:predictIntent(content).code});
+   renderer.push(d.reply);await renderer.finish();
    renderMemories(d.memories||[]);
   }
  }catch(err){
-  loading.textContent=loading.textContent&&loading.textContent!=='I’m here — let me think this through…'?loading.textContent+'\n\n[Connection interrupted. Please ask me to continue.]':'I’m sorry, I could not reply just now. '+err.message;
+  renderer.flush();
+  const target=loading.firstElementChild||loading;
+  target.textContent=target.textContent&&target.textContent!=='I’m here — let me think this through…'?target.textContent+'\n\n[Connection interrupted. Please ask me to continue.]':'I’m sorry, I could not reply just now. '+err.message;
   chatStatus.textContent='';
  }finally{prefetchJob=null;busy=false;$('send').disabled=false;$('message').focus()}
 }
