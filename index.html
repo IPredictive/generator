@@ -93,13 +93,39 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
     document.querySelectorAll('[data-package]').forEach(function(link){link.addEventListener('click',function(){var selected=this.getAttribute('data-package');var select=document.getElementById('package');Array.from(select.options).forEach(function(option){if(option.text.toLowerCase().includes(selected.toLowerCase()))select.value=option.text;});});});
-    document.getElementById('inquiry-form').addEventListener('submit',function(event){
+    document.getElementById('inquiry-form').addEventListener('submit', async function(event){
       event.preventDefault();
-      var data=new FormData(this);
-      var body='AplusCity AI Video Studio inquiry\n\nName: '+data.get('name')+'\nBusiness: '+(data.get('business')||'Not provided')+'\nEmail: '+data.get('email')+'\nPackage: '+data.get('package')+'\nProject: '+(data.get('details')||'Not provided');
+      var form=this;
       var status=document.getElementById('form-status');
-      status.textContent='Your inquiry is ready. Your email app will open so you can send it. This form does not store submissions online.';
-      window.location.href='mailto:inquiry@aplusachiever.com?subject='+encodeURIComponent('AplusCity Studio project inquiry')+'&body='+encodeURIComponent(body);
+      var button=form.querySelector('button[type="submit"]');
+      if (!form.reportValidity()) return;
+      var data=new FormData(form);
+      var payload=new URLSearchParams();
+      ['name','business','email','package','details'].forEach(function(key){
+        payload.set(key, String(data.get(key)||''));
+      });
+      // Honeypot field for basic spam filtering; kept visually hidden.
+      payload.set('website', '');
+      button.disabled=true;
+      button.style.opacity='.65';
+      button.textContent='Sending…';
+      status.textContent='Sending your inquiry securely to our submission service…';
+      try {
+        await fetch('https://script.google.com/macros/s/AKfycbzfFudIU54_B0EQsf6R22nQiL3v1liBsnCyUe_DT2iA_IKdtWpqZoorhKg4ed12h3-p/exec', {
+          method:'POST',
+          mode:'no-cors',
+          headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+          body:payload.toString()
+        });
+        status.textContent='Your inquiry request has been sent. Google Apps Script does not let this page verify the saved result, so if you do not hear from us, please email inquiry@aplusachiever.com directly.';
+        form.reset();
+      } catch (error) {
+        status.textContent='We could not send your inquiry. Please email inquiry@aplusachiever.com directly.';
+      } finally {
+        button.disabled=false;
+        button.style.opacity='';
+        button.textContent='Send inquiry ↗';
+      }
     });
   </script>
 </body>
