@@ -74,16 +74,56 @@ function addBubble(text,who){const el=document.createElement('div');el.className
 async function api(action,body){if(!session)throw new Error('Please sign in again.');const r=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action,...(body||{})})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Request failed.');return d}
 async function loadHistoryAndMemories(){if(!session)return;try{const d=await api('history');$('messages').replaceChildren();if(!d.messages||!d.messages.length){addBubble("Hello. I'm glad you're here. What has been on your mind today?",'ai')}else d.messages.forEach(m=>addBubble(m.content,m.role));renderMemories(d.memories||[])}catch(e){chatStatus.textContent=e.message}}
 function renderMemories(items){const list=$('memory-list');list.replaceChildren();if(!items.length){const p=document.createElement('p');p.className='muted small';p.textContent='No saved memories yet. As we talk, I may suggest a small number of useful details to remember.';list.appendChild(p);return}items.forEach(m=>{const row=document.createElement('div');row.className='memory-item';const span=document.createElement('span');span.textContent=m.memory;const b=document.createElement('button');b.type='button';b.textContent='Forget';b.addEventListener('click',async()=>{try{await api('forget',{id:m.id});row.remove();chatStatus.textContent='Memory deleted.'}catch(e){$('memory-status').textContent=e.message}});row.append(span,b);list.appendChild(row)})}
-async function streamChat(message,onDelta){
- const response=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'chat',message,responseStyle:$('reply-style').value})});
+let prefetchTimer=null,prefetchJob=null;
+function cancelPrefetch(){clearTimeout(prefetchTimer);prefetchTimer=null;if(prefetchJob&&!prefetchJob.done)prefetchJob.controller.abort();prefetchJob=null}
+async function streamChat(message,onDelta,options={}){
+ const response=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'chat',message,responseStyle:$('reply-style').value,speculative:options.speculative===true}),signal:options.signal});
  if(!response.ok){let detail={};try{detail=await response.json()}catch(_){}throw new Error(detail.error||'The companion could not respond just now.')}
  if(!response.body||!response.body.getReader)throw new Error('Live streaming is not supported by this browser. Please refresh and try again.');
- const reader=response.body.getReader(),decoder=new TextDecoder();let pending='',reply='',finished=false,memories=[];
- function handleBlock(block){let event='message',data='';for(const line of block.split(/\r?\n/)){if(line.startsWith('event:'))event=line.slice(6).trim();else if(line.startsWith('data:'))data+=line.slice(5).trim()}if(!data)return;let payload;try{payload=JSON.parse(data)}catch(_){return}if(event==='delta'&&typeof payload.text==='string'){reply+=payload.text;onDelta(reply)}else if(event==='done'){finished=true;memories=payload.memories||[]}else if(event==='error')throw new Error(payload.error||'The stream ended unexpectedly.')}
+ const reader=response.body.getReader(),decoder=new TextDecoder();let pending='',reply='',finished=false,memories=[],preparedMemories=[];
+ function handleBlock(block){let event='message',data='';for(const line of block.split(/\r?\n/)){if(line.startsWith('event:'))event=line.slice(6).trim();else if(line.startsWith('data:'))data+=line.slice(5).trim()}if(!data)return;let payload;try{payload=JSON.parse(data)}catch(_){return}if(event==='delta'&&typeof payload.text==='string'){reply+=payload.text;onDelta(reply)}else if(event==='done'){finished=true;memories=payload.memories||[];preparedMemories=payload.preparedMemories||[]}else if(event==='error')throw new Error(payload.error||'The stream ended unexpectedly.')}
  while(true){const part=await reader.read();if(part.done)break;pending+=decoder.decode(part.value,{stream:true});const blocks=pending.split(/\r?\n\r?\n/);pending=blocks.pop()||'';for(const block of blocks)handleBlock(block)}
- pending+=decoder.decode();if(pending.trim())handleBlock(pending);if(!finished&&!reply)throw new Error('The companion returned an empty reply. Please try again.');return {reply,memories}
+ pending+=decoder.decode();if(pending.trim())handleBlock(pending);if(!finished&&!reply)throw new Error('The companion returned an empty reply. Please try again.');return {reply,memories,preparedMemories}
 }
-async function send(e){e.preventDefault();if(busy||!session)return;const content=$('message').value.trim();if(!content)return;busy=true;$('send').disabled=true;$('message').value='';addBubble(content,'user');const loading=addBubble('I’m here — let me think this through…','ai');chatStatus.textContent='';try{const d=await streamChat(content,text=>{loading.textContent=text;$('messages').scrollTop=$('messages').scrollHeight});renderMemories(d.memories||[])}catch(err){loading.textContent=loading.textContent&&loading.textContent!=='I’m here — let me think this through…'?loading.textContent+'\n\n[Connection interrupted. Please ask me to continue.]':'I’m sorry, I could not reply just now. '+err.message;chatStatus.textContent=''}finally{busy=false;$('send').disabled=false;$('message').focus()}}
+$('message').addEventListener('input',()=>{
+ if(busy)return;
+ const draft=$('message').value.trim();
+ cancelPrefetch();
+ if(draft.length<12||!session)return;
+ const style=$('reply-style').value,controller=new AbortController();
+ const job={text:draft,style,controller,visible:false,done:false,reply:'',promise:null};
+ prefetchJob=job;
+ prefetchTimer=setTimeout(()=>{
+  if(prefetchJob!==job||$('message').value.trim()!==draft||busy)return;
+  chatStatus.textContent='Quietly thinking ahead…';
+  job.promise=streamChat(draft,text=>{job.reply=text;if(job.visible){job.bubble.textContent=text;$('messages').scrollTop=$('messages').scrollHeight}},{speculative:true,signal:controller.signal})
+   .then(result=>{job.done=true;job.result=result;if(prefetchJob===job&&$('message').value.trim()===draft)chatStatus.textContent='Ready when you are.';return result})
+   .catch(error=>{job.done=true;job.error=error;throw error});
+  job.promise.catch(()=>{});
+ },650);
+});
+$('reply-style').addEventListener('change',cancelPrefetch);
+async function send(e){
+ e.preventDefault();if(busy||!session)return;const content=$('message').value.trim();if(!content)return;
+ busy=true;$('send').disabled=true;$('message').value='';addBubble(content,'user');const loading=addBubble('I’m here — let me think this through…','ai');chatStatus.textContent='';
+ const job=prefetchJob&&prefetchJob.text===content&&prefetchJob.style===$('reply-style').value?prefetchJob:null;
+ cancelPrefetch();
+ try{
+  if(job){
+   job.visible=true;job.bubble=loading;loading.textContent=job.reply||'I’ve started thinking about that…';
+   const d=job.result||await job.promise;
+   loading.textContent=d.reply;
+   await api('commit-prepared',{message:content,reply:d.reply,preparedMemories:d.preparedMemories||[]});
+   const saved=await api('history');renderMemories(saved.memories||[]);
+  }else{
+   const d=await streamChat(content,text=>{loading.textContent=text;$('messages').scrollTop=$('messages').scrollHeight});
+   renderMemories(d.memories||[]);
+  }
+ }catch(err){
+  loading.textContent=loading.textContent&&loading.textContent!=='I’m here — let me think this through…'?loading.textContent+'\n\n[Connection interrupted. Please ask me to continue.]':'I’m sorry, I could not reply just now. '+err.message;
+  chatStatus.textContent='';
+ }finally{prefetchJob=null;busy=false;$('send').disabled=false;$('message').focus()}
+}
 $('guest-start').addEventListener('click',startGuest);$('create-memory-code').addEventListener('click',createMemoryCode);$('create-memory-account').addEventListener('click',createMemoryAccount);$('use-memory-code').addEventListener('click',enterMemoryCode);$('copy-memory-code').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('memory-code').value);authStatus.textContent='Memory code copied. Store it somewhere private.'}catch(e){authStatus.textContent='Copy was blocked. Please select and copy the code manually.'}});$('chat-form').addEventListener('submit',send);$('message').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!$('send').disabled)$('chat-form').requestSubmit();}});$('signout').addEventListener('click',async()=>{if(session?.user?.is_anonymous&&!confirm('End this guest session? Your guest history may no longer be recoverable. Consider keeping this browser session.'))return;if(client)await client.auth.signOut();session=null;renderAuth();$('messages').replaceChildren();});$('refresh-memory').addEventListener('click',async()=>{try{const d=await api('history');renderMemories(d.memories||[]);$('memory-status').textContent='Memories refreshed.'}catch(e){$('memory-status').textContent=e.message}});$('delete-all').addEventListener('click',async()=>{if(!confirm('Delete all saved memories? This cannot be undone.'))return;try{await api('forget-all');renderMemories([]);$('memory-status').textContent='All saved memories deleted.'}catch(e){$('memory-status').textContent=e.message}});
 setup();
 })();
