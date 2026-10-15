@@ -40,6 +40,7 @@ function doPost(e) {
       return jsonOutput_({ ok: false, error: 'Please provide a valid name and email.' });
     }
 
+    let referenceCode = '';
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
     let sheet;
@@ -57,7 +58,7 @@ function doPost(e) {
           sheet.getRange(1, 2).setValue('Reference Code');
         }
       }
-      const referenceCode = createReferenceCode_();
+      referenceCode = createReferenceCode_();
       sheet.appendRow([new Date(), referenceCode, name, business, email, packageName, details, 'New']);
     } finally {
       lock.releaseLock();
