@@ -1,26 +1,33 @@
-const MODEL = 'fal-ai/wan/v2.2-5b/image-to-video';
+const API_ROOT = 'https://apihub.agnes-ai.com';
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ok:false,error:'Method not allowed'}); }
-  if (!process.env.FAL_KEY) return res.status(503).json({ok:false,error:'Video generation is not configured yet. Add FAL_KEY in Vercel Project Settings → Environment Variables, then redeploy.'});
-  const body=req.body||{};
-  const image=String(body.image||'');
-  const prompt=String(body.prompt||'').trim().slice(0,3000);
-  const aspect=String(body.aspectRatio||'9:16');
-  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image) || image.length>3_800_000) return res.status(400).json({ok:false,error:'Please upload a valid JPG, PNG or WebP image under 2.5 MB after optimization.'});
+  if (!process.env.AGNES_API_KEY) return res.status(503).json({ok:false,error:'Agnes AI is not configured yet. Add AGNES_API_KEY in Vercel Project Settings → Environment Variables, then redeploy.'});
+  const body = req.body || {};
+  const image = String(body.image || '');
+  const prompt = String(body.prompt || '').trim().slice(0, 3000);
+  const aspect = String(body.aspectRatio || '9:16');
+  const duration = String(body.duration || '15 seconds');
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(image) || image.length > 3_800_000) return res.status(400).json({ok:false,error:'Please upload a valid JPG, PNG or WebP image under 2.5 MB after optimization.'});
   if (!prompt) return res.status(400).json({ok:false,error:'Please describe the video you want to create.'});
   if (!['9:16','16:9','1:1'].includes(aspect)) return res.status(400).json({ok:false,error:'Unsupported aspect ratio.'});
+  const dims = aspect === '9:16' ? {width:576,height:1024} : aspect === '16:9' ? {width:1152,height:648} : {width:768,height:768};
+  const frames = duration === '15 seconds' ? 361 : 441;
   try {
-    const upstream=await fetch('https://queue.fal.run/'+MODEL,{
+    const upstream = await fetch(API_ROOT + '/v1/videos', {
       method:'POST',
-      headers:{Authorization:'Key '+process.env.FAL_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({input:{image_url:image,prompt,aspect_ratio:aspect,resolution:'720p',num_frames:81,frames_per_second:24,enable_safety_checker:true,enable_output_safety_checker:true}})
+      headers:{Authorization:'Bearer ' + process.env.AGNES_API_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({model:'agnes-video-v2.0',prompt,image,width:dims.width,height:dims.height,num_frames:frames,frame_rate:24,negative_prompt:'distorted product, warped logo, unreadable text, extra objects, flicker, low quality'})
     });
-    const data=await upstream.json().catch(()=>({}));
-    if(!upstream.ok || !data.request_id) {
-      const msg=String((data&&data.detail)|| (data&&data.message)||'Video provider rejected the request.');
-      return res.status(502).json({ok:false,error:msg.slice(0,350)});
+    const data = await upstream.json().catch(()=>({}));
+    if (!upstream.ok) {
+      const msg = String((data && (data.message || data.error || data.detail)) || 'Agnes AI rejected the request. Check API key, account access and image format.');
+      return res.status(upstream.status === 401 ? 401 : upstream.status === 429 ? 429 : 502).json({ok:false,error:msg.slice(0,350)});
     }
-    return res.status(202).json({ok:true,requestId:data.request_id,statusUrl:data.status_url||null});
-  } catch(e) { return res.status(502).json({ok:false,error:'Could not contact the video service. Please try again.'}); }
+    const requestId = data.video_id || data.id || data.task_id;
+    if (!requestId) return res.status(502).json({ok:false,error:'Agnes AI did not return a video task ID.'});
+    return res.status(202).json({ok:true,requestId,estimatedSeconds:data.seconds || null});
+  } catch(e) {
+    return res.status(502).json({ok:false,error:'Could not contact Agnes AI. Please try again.'});
+  }
 };
