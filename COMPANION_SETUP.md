@@ -8,15 +8,25 @@ AplusCity Companion is the new text-first personal AI companion experience. Vide
 - `api/companion-chat.js`: verifies each Supabase Auth session, calls the existing Agnes text model, and stores messages/memories per authenticated user.
 - `supabase/companion-schema.sql`: schema and Row Level Security policies. Apply only to a dedicated Companion Supabase project.
 
-## Required Vercel environment variables
-- `AGNES_API_KEY`: existing secret; keep it server-side.
-- `SUPABASE_URL`: URL of the dedicated Companion Supabase project.
-- `SUPABASE_ANON_KEY`: public/anon key for that project.
-- `SUPABASE_SERVICE_ROLE_KEY`: server-only secret. Never prefix it with `NEXT_PUBLIC_`, expose it in browser code, or commit it to GitHub.
+## Database provisioned
 
-The currently connected Supabase project discovered during initial inspection is named `sse-agents-community`; it belongs to a different project and must not be reused for Companion data. Create/select a separate Companion project, apply `supabase/companion-schema.sql`, then add its three Supabase values to the Vercel project's environment settings. The app will show a setup notice until these are configured.
+A dedicated free-tier project has been created in the `predictapp` organization:
+- Project: `apluscity-companion`
+- Project ref: `dmnrrgzqeagwqhwrmhok`
+- Region: Singapore (`ap-southeast-1`)
+- Current project creation estimate: US$0/month (usage and third-party AI charges may still apply).
 
-In Supabase Auth settings, configure the production site URL and allowed redirect URLs for `https://generator-gamma-plum.vercel.app/**`. For a production deployment, enable email confirmation and configure email delivery before inviting real users.
+The schema in `supabase/companion-schema.sql` has been applied to this dedicated project. The tables use Row Level Security so authenticated users can access only rows whose `user_id` matches their Supabase Auth identity.
+
+## Vercel environment variables
+
+The following values have been configured for production, preview, and development:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
+Keep the existing `AGNES_API_KEY` server-side. This implementation uses the signed-in user's access token and row-level security for database operations; it does not require or expose a Supabase service-role key. Vercel environment changes take effect after a new deployment.
+
+In Supabase Auth settings, configure the production site URL and allowed redirect URLs for `https://generator-gamma-plum.vercel.app`. Email confirmation and production email delivery should be configured before inviting real users.
 
 ## Privacy and product notes
 - Server verifies the access token with Supabase Auth before any user-specific operation.
