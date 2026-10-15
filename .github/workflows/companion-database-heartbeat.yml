@@ -1,0 +1,49 @@
+name: Companion database heartbeat
+
+on:
+  schedule:
+    # Ten lightweight database checks per UTC day; GitHub may delay scheduled runs.
+    - cron: "17 0,2,5,7,10,12,14,17,19,22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: companion-database-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read public Companion configuration
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          config="$(curl --fail --silent --show-error --retry 2 --retry-delay 3 \
+            https://generator-gamma-plum.vercel.app/api/companion-config)"
+          url="$(printf '%s' "$config" | jq -er '.url')"
+          key="$(printf '%s' "$config" | jq -er '.anonKey')"
+          echo "supabase_url=$url" >> "$GITHUB_OUTPUT"
+          echo "::add-mask::$key"
+          echo "supabase_anon_key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Query Companion database heartbeat
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ steps.config.outputs.supabase_url }}
+          SUPABASE_ANON_KEY: ${{ steps.config.outputs.supabase_anon_key }}
+        run: |
+          set -euo pipefail
+          result="$(curl --fail --silent --show-error --retry 2 --retry-delay 3 \
+            --request POST "$SUPABASE_URL/rest/v1/rpc/companion_heartbeat" \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{}')"
+          printf '%s' "$result" | jq -e '.ok == true' >/dev/null
+          timestamp="$(printf '%s' "$result" | jq -r '.timestamp')"
+          echo "Companion database heartbeat succeeded at $timestamp"
