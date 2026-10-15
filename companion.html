@@ -106,8 +106,9 @@ $('reply-style').addEventListener('change',cancelPrefetch);
 async function send(e){
  e.preventDefault();if(busy||!session)return;const content=$('message').value.trim();if(!content)return;
  busy=true;$('send').disabled=true;$('message').value='';addBubble(content,'user');const loading=addBubble('I’m here — let me think this through…','ai');chatStatus.textContent='';
- const job=prefetchJob&&prefetchJob.text===content&&prefetchJob.style===$('reply-style').value?prefetchJob:null;
- cancelPrefetch();
+ const candidate=prefetchJob&&prefetchJob.text===content&&prefetchJob.style===$('reply-style').value?prefetchJob:null;
+ const job=candidate&&candidate.promise?candidate:null;
+ if(job){clearTimeout(prefetchTimer);prefetchTimer=null;prefetchJob=null}else cancelPrefetch();
  try{
   if(job){
    job.visible=true;job.bubble=loading;loading.textContent=job.reply||'I’ve started thinking about that…';
