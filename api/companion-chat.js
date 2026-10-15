@@ -29,18 +29,20 @@ module.exports = async function handler(req, res) {
     if (!user || !user.id) return res.status(401).json({ok:false,error:'Please sign in again.'});
     const body = req.body || {};
     const action = String(body.action || 'chat');
-    if (action === 'chat' && !body.speculative) {
+    if (action === 'chat') {
       const now = Date.now();
       for (const [key, bucket] of requestBuckets) {
         if (now - bucket.start >= RATE_WINDOW_MS) requestBuckets.delete(key);
       }
-      let bucket = requestBuckets.get(user.id);
+      const rateKey=user.id+(body.speculative?':prefetch':'');
+      const requestLimit=body.speculative?12:MAX_CHAT_REQUESTS_PER_WINDOW;
+      let bucket = requestBuckets.get(rateKey);
       if (!bucket || now - bucket.start >= RATE_WINDOW_MS) {
         bucket = { start: now, count: 0 };
-        requestBuckets.set(user.id, bucket);
+        requestBuckets.set(rateKey, bucket);
       }
-      if (bucket.count >= MAX_CHAT_REQUESTS_PER_WINDOW) {
-        return res.status(429).json({ok:false,error:'You have reached the temporary chat limit. Please try again later.'});
+      if (bucket.count >= requestLimit) {
+        return res.status(429).json({ok:false,error:body.speculative?'Predictive preparation is paused for a while. You can still send your message normally.':'You have reached the temporary chat limit. Please try again later.'});
       }
       bucket.count += 1;
     }
