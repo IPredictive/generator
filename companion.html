@@ -32,7 +32,7 @@
 <div class="chat-shell">
 <div class="chat-head"><div class="headleft"><div class="avatar">✦</div><div><strong id="welcome-name">Your companion</strong><div class="muted small">Here to listen, at your pace</div></div></div><button class="btn ghost" id="signout" type="button">Sign out</button></div>
 <div class="messages" id="messages" aria-live="polite"><div class="bubble ai">Hello. I'm glad you're here. What has been on your mind today?</div></div>
-<form id="chat-form" class="composer"><textarea id="message" rows="1" maxlength="3000" required placeholder="Tell me about your day…"></textarea><button class="btn" id="send" type="submit">Send</button></form>
+<div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;margin:0 0 8px"><label for="reply-style" class="muted small">Reply style</label><select id="reply-style" aria-label="Reply style" style="width:auto;max-width:160px;padding:7px 10px;border-radius:10px;background:var(--panel);color:var(--text);border:1px solid var(--line)"><option value="adaptive">Natural</option><option value="brief">Brief</option><option value="detailed">More detail</option></select></div><form id="chat-form" class="composer"><textarea id="message" rows="1" maxlength="3000" required placeholder="Tell me about your day…"></textarea><button class="btn" id="send" type="submit">Send</button></form>
 <div id="chat-status" class="status" role="status"></div>
 </div>
 </div>
@@ -75,7 +75,7 @@ async function api(action,body){if(!session)throw new Error('Please sign in agai
 async function loadHistoryAndMemories(){if(!session)return;try{const d=await api('history');$('messages').replaceChildren();if(!d.messages||!d.messages.length){addBubble("Hello. I'm glad you're here. What has been on your mind today?",'ai')}else d.messages.forEach(m=>addBubble(m.content,m.role));renderMemories(d.memories||[])}catch(e){chatStatus.textContent=e.message}}
 function renderMemories(items){const list=$('memory-list');list.replaceChildren();if(!items.length){const p=document.createElement('p');p.className='muted small';p.textContent='No saved memories yet. As we talk, I may suggest a small number of useful details to remember.';list.appendChild(p);return}items.forEach(m=>{const row=document.createElement('div');row.className='memory-item';const span=document.createElement('span');span.textContent=m.memory;const b=document.createElement('button');b.type='button';b.textContent='Forget';b.addEventListener('click',async()=>{try{await api('forget',{id:m.id});row.remove();chatStatus.textContent='Memory deleted.'}catch(e){$('memory-status').textContent=e.message}});row.append(span,b);list.appendChild(row)})}
 async function streamChat(message,onDelta){
- const response=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'chat',message})});
+ const response=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'chat',message,responseStyle:$('reply-style').value})});
  if(!response.ok){let detail={};try{detail=await response.json()}catch(_){}throw new Error(detail.error||'The companion could not respond just now.')}
  if(!response.body||!response.body.getReader)throw new Error('Live streaming is not supported by this browser. Please refresh and try again.');
  const reader=response.body.getReader(),decoder=new TextDecoder();let pending='',reply='',finished=false,memories=[];
