@@ -215,7 +215,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       if(streamError)console.error('Companion stream warning:',String(streamError));
       const validCats=new Set(['preference','personal_story','important_person','routine','communication_style','goal']);
       const existing=new Set((memories||[]).map(m=>String(m.memory).toLowerCase()));
-      const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!/(password|passcode|credit card|bank account|诊断|病史|medical condition|ssn|身份证|账户号码)/i.test(m.memory)&&!existing.has(m.memory.trim().toLowerCase())).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
+      const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!isSensitiveMemory(m.memory)&&!existing.has(m.memory.trim().toLowerCase())).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
       if(!speculative){
         // Save only after the user actually sends the message.
         const writes=[db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[{user_id:user.id,role:'user',content:message},{user_id:user.id,role:'assistant',content:reply}]})];
