@@ -83,17 +83,18 @@ module.exports = async function handler(req, res) {
       }
 
       const mode=adultRequest?'adult':'general';
-      await db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[
+      const committedMessages=await db('companion_messages',{method:'POST',headers:{Prefer:'return=representation'},body:[
         {user_id:user.id,role:'user',content:message,conversation_mode:mode},
         {user_id:user.id,role:'assistant',content:reply,conversation_mode:mode}
       ]});
+      const sourceMessageId=Array.isArray(committedMessages)?(committedMessages.find(m=>m.role==='user')||{}).id:null;
 
       // Adult conversations are deliberately excluded from durable memories and profile evolution.
       if(adultRequest) return res.status(200).json({ok:true,conversationMode:'adult',profileUpdated:false});
 
       const validCats=new Set(['preference','personal_story','important_person','routine','communication_style','goal']);
       const proposed=Array.isArray(body.preparedMemories)?body.preparedMemories.slice(0,2):[];
-      const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!isSensitiveMemory(m.memory)).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
+      const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!isSensitiveMemory(m.memory)).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category,source_message_id:sourceMessageId||null}));
       if(safe.length) await db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save prepared Companion memory:',String(e).slice(0,160))});
 
       let profileUpdated=false;
@@ -404,8 +405,10 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!isSensitiveMemory(m.memory)&&!existing.has(m.memory.trim().toLowerCase())).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
       if(!speculative){
         // Save only after the user actually sends the message.
-        const writes=[db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[{user_id:user.id,role:'user',content:message,conversation_mode:'general'},{user_id:user.id,role:'assistant',content:reply,conversation_mode:'general'}]})];
-        if(safe.length)writes.push(db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save Companion memory:',String(e).slice(0,160));return null}));
+        const committedMessages=await db('companion_messages',{method:'POST',headers:{Prefer:'return=representation'},body:[{user_id:user.id,role:'user',content:message,conversation_mode:'general'},{user_id:user.id,role:'assistant',content:reply,conversation_mode:'general'}]});
+        const sourceMessageId=Array.isArray(committedMessages)?(committedMessages.find(m=>m.role==='user')||{}).id:null;
+        const writes=[];
+        if(safe.length)writes.push(db('companion_memories',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:safe.map(m=>({...m,source_message_id:sourceMessageId||null}))}).catch(e=>{console.error('Could not save Companion memory:',String(e).slice(0,160));return null}));
         if(profileUpdate){
           const clip=(value,max)=>typeof value==='string'?value.trim().slice(0,max):'';
           const list=(value)=>Array.isArray(value)?value.filter(x=>typeof x==='string'&&!isSensitiveMemory(x)).map(x=>x.trim().slice(0,240)).filter(Boolean).slice(0,8):[];
