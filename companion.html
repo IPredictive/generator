@@ -175,10 +175,22 @@ async function send(e){
   if(job){
    job.visible=true;job.bubble=loading;job.renderer=renderer;
    renderer.push(job.reply||'');
-   const d=job.result||await job.promise;
-   renderer.push(d.reply);await renderer.finish();
-   await api('commit-prepared',{message:content,reply:d.reply,preparedMemories:d.preparedMemories||[]});
-   const saved=await api('history');renderMemories(saved.memories||[]);
+   let d;
+   try{
+    d=job.result||await job.promise;
+    renderer.push(d.reply);await renderer.finish();
+    await api('commit-prepared',{message:content,reply:d.reply,preparedMemories:d.preparedMemories||[]});
+    const saved=await api('history');renderMemories(saved.memories||[]);
+   }catch(prefetchError){
+    // Predictive preparation is optional. If it hits a rate limit or provider error,
+    // discard its partial text and run a normal chat request instead.
+    console.warn('Predictive preparation failed; retrying as a normal chat request:',String(prefetchError).slice(0,160));
+    renderer.flush();
+    loading.firstElementChild.textContent='I’m here — let me think this through…';
+    const fallback=await streamChat(content,text=>renderer.push(text),{intent:predictIntent(content).code});
+    renderer.push(fallback.reply);await renderer.finish();
+    renderMemories(fallback.memories||[]);
+   }
   }else{
    const d=await streamChat(content,text=>renderer.push(text),{intent:predictIntent(content).code});
    renderer.push(d.reply);await renderer.finish();
