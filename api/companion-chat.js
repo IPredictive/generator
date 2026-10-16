@@ -161,7 +161,39 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
     // Adult creative/flirtatious conversation is composed by AplusCity's own layer,
     // not by asking AGNES to generate erotic text. Do not persist this sensitive content as memory.
     if (isAdultCreativeRequest(message)) {
-      const reply = composeAdultLayerReply(message);
+      let reply = '';
+      const writingKey = process.env.APLUSCITY_WRITING_API_KEY;
+      const writingBase = (process.env.APLUSCITY_WRITING_BASE_URL || '').replace(/\/$/, '');
+      const writingModel = process.env.APLUSCITY_WRITING_MODEL;
+      if (writingKey && writingBase && writingModel) {
+        const writingController = new AbortController();
+        const writingTimeout = setTimeout(() => writingController.abort(), 25000);
+        try {
+          const writingResponse = await fetch(writingBase + '/chat/completions', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + writingKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: writingModel,
+              temperature: 0.85,
+              max_tokens: 1200,
+              stream: false,
+              messages: buildAdultCreativeMessages(message, history)
+            }),
+            signal: writingController.signal
+          });
+          if (writingResponse.ok) {
+            const writingData = await writingResponse.json();
+            reply = String(writingData.choices?.[0]?.message?.content || '').trim();
+          } else {
+            console.error('Separate writing provider returned:', writingResponse.status);
+          }
+        } catch (e) {
+          console.error('Separate writing provider unavailable:', String(e).slice(0, 120));
+        } finally {
+          clearTimeout(writingTimeout);
+        }
+      }
+      if (!reply) reply = composeAdultLayerReply(message, { recentMessages: history.slice(-12) });
       res.status(200);
       res.setHeader('Content-Type','text/event-stream; charset=utf-8');
       res.setHeader('Cache-Control','no-cache, no-transform');
