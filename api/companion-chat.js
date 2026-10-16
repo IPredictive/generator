@@ -111,8 +111,14 @@ module.exports = async function handler(req, res) {
         };
         if(!isSensitiveMemory(safeProfile.summary)&&!isSensitiveMemory(safeProfile.communication_style)){
           const existing=await db('companion_profiles?user_id=eq.'+encodeURIComponent(user.id)+'&select=version&limit=1').catch(()=>[]);
-          await db('companion_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:[{user_id:user.id,summary:safeProfile.summary,profile:safeProfile,version:(Number(existing&&existing[0]&&existing[0].version)||0)+1,updated_at:new Date().toISOString()}]});
-          profileUpdated=true;
+          try {
+            await db('companion_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:[{user_id:user.id,summary:safeProfile.summary,profile:safeProfile,version:(Number(existing&&existing[0]&&existing[0].version)||0)+1,updated_at:new Date().toISOString()}]});
+            profileUpdated=true;
+          } catch(profileError) {
+            // The conversation is already committed; do not turn a profile-only failure
+            // into a full chat retry that would duplicate the same conversation.
+            console.error('Prepared conversation saved but profile update failed:',String(profileError).slice(0,160));
+          }
         }
       }
       return res.status(200).json({ok:true,conversationMode:'general',memoriesSaved:safe.length,profileUpdated});
