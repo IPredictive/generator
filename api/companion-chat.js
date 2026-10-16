@@ -208,7 +208,7 @@ module.exports = async function handler(req, res) {
       }
     }
     const memoryText=selectedMemories.map(x=>'- ['+x.memory.category+'] '+x.memory.memory).join('\n')||'(No relevant saved memories.)';
-    const allMemoryText=(memories||[]).map(m=>'- ['+String(m.category||'memory')+'] '+String(m.memory||'')).join('\n')||'(No saved memories yet.)';
+    const allMemoryText=safeMemories.map(m=>'- ['+String(m.category||'memory')+'] '+String(m.memory||'')).join('\n')||'(No saved memories yet.)';
     const carePlan = plans && plans[0] ? plans[0] : null;
     const carePlanText = carePlan ? JSON.stringify({preferred_name:carePlan.preferred_name,life_context:carePlan.life_context,current_goals:carePlan.current_goals,support_style:carePlan.support_style,proactive_checkins_requested:carePlan.checkin_enabled,preferred_checkin_time:carePlan.checkin_time}) : '(No personal plan saved.)';
     const existingProfile = profiles && profiles[0] ? profiles[0] : null;
