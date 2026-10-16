@@ -49,7 +49,7 @@
 <script>
 (function(){
 const $=id=>document.getElementById(id);
-let client=null,session=null,busy=false,adultConfirmed=false;
+let client=null,session=null,busy=false,adultConfirmed=false,historyLoadedFor=null,historyLoadPromise=null;
 const authPanel=$('auth-panel'),chatPanel=$('chat-panel'),authStatus=$('auth-status'),chatStatus=$('chat-status'),memoryPanel=$('memory-panel');
 async function setup(){
  try{
@@ -57,7 +57,7 @@ async function setup(){
   if(!r.ok||!cfg||!cfg.url||!cfg.anonKey||!window.supabase){authStatus.textContent=(cfg&&cfg.error)||('Account service is not ready (HTTP '+r.status+'). Please try again later.'); $('guest-start').disabled=true;$('create-memory-code').disabled=true;$('use-memory-code').disabled=true;return}
   client=window.supabase.createClient(cfg.url,cfg.anonKey);
   const {data}=await client.auth.getSession();session=data.session;
-  client.auth.onAuthStateChange((_event,next)=>{session=next;renderAuth();if(session)loadHistoryAndMemories()});
+  client.auth.onAuthStateChange((event,next)=>{session=next;if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED')return;renderAuth();if(!session){historyLoadedFor=null;cancelPrefetch();return}if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session.user.id!==historyLoadedFor&&!busy)void loadHistoryAndMemories()});
   renderAuth();
   if(session) await loadHistoryAndMemories();
  }catch(e){authStatus.textContent='Could not initialize account services. Please try again later.'}
@@ -92,7 +92,7 @@ function addBubble(text,who,timestamp){
 }
 async function api(action,body){if(!session)throw new Error('Please sign in again.');const r=await fetch('/api/companion-chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action,adultConfirmed,...(body||{})})});const raw=await r.text();let d=null;try{d=raw?JSON.parse(raw):null}catch(_){const detail=raw.replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,180);throw new Error('The server returned an unreadable response (HTTP '+r.status+'). '+(detail||'Please try again in a moment.'))}if(!r.ok||!d||!d.ok)throw new Error((d&&d.error)||('Request failed (HTTP '+r.status+').'));return d}
 async function maintenanceApi(action,body){if(!session)throw new Error('Please sign in again.');const r=await fetch('/api/companion-maintenance',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action,...(body||{})})});const raw=await r.text();let d=null;try{d=raw?JSON.parse(raw):null}catch(_){throw new Error('Maintenance returned an unreadable response (HTTP '+r.status+').')}if(!r.ok||!d||!d.ok)throw new Error((d&&d.error)||('Maintenance failed (HTTP '+r.status+').'));return d}
-async function loadHistoryAndMemories(){if(!session)return;try{const d=await api('history');$('messages').replaceChildren();if(!d.messages||!d.messages.length){addBubble("Hello. I'm glad you're here. What has been on your mind today?",'ai')}else d.messages.forEach(m=>addBubble(m.content,m.role,m.created_at));renderMemories(d.memories||[]);await loadTasks()}catch(e){chatStatus.textContent=e.message}}
+async function loadHistoryAndMemories(){if(!session)return;if(historyLoadPromise)return historyLoadPromise;const requestedUser=session.user.id;historyLoadPromise=(async()=>{try{const d=await api('history');if(!session||session.user.id!==requestedUser)return;if(!busy){$('messages').replaceChildren();if(!d.messages||!d.messages.length){addBubble("Hello. I'm glad you're here. What has been on your mind today?",'ai')}else d.messages.forEach(m=>addBubble(m.content,m.role,m.created_at));historyLoadedFor=requestedUser}renderMemories(d.memories||[]);await loadTasks()}catch(e){chatStatus.textContent=e.message}})();try{return await historyLoadPromise}finally{historyLoadPromise=null}}
 function renderMemories(items){const list=$('memory-list');list.replaceChildren();if(!items.length){const p=document.createElement('p');p.className='muted small';p.textContent='No saved memories yet. As we talk, I may suggest a small number of useful details to remember.';list.appendChild(p);return}items.forEach(m=>{const row=document.createElement('div');row.className='memory-item';const span=document.createElement('span');span.textContent=m.memory;span.style.flex='1';const actions=document.createElement('div');actions.style.cssText='display:flex;gap:10px;flex-shrink:0';const edit=document.createElement('button');edit.type='button';edit.textContent='Correct';edit.addEventListener('click',async()=>{const revised=window.prompt('Correct this saved memory. Do not include passwords or intimate details.',m.memory);if(revised===null)return;const clean=revised.trim();if(!clean){$('memory-status').textContent='A memory cannot be empty. Use Forget to remove it.';return}try{await api('update-memory',{id:m.id,memory:clean,category:m.category||'preference'});span.textContent=clean;$('memory-status').textContent='Memory corrected.'}catch(e){$('memory-status').textContent=e.message}});const forget=document.createElement('button');forget.type='button';forget.textContent='Forget';forget.addEventListener('click',async()=>{try{await api('forget',{id:m.id});row.remove();$('memory-status').textContent='Memory deleted.'}catch(e){$('memory-status').textContent=e.message}});actions.append(edit,forget);row.append(span,actions);list.appendChild(row)})}
 const taskStatusLabels={new:'Not started',understood:'Understood',planned:'Planned',in_progress:'In progress',waiting_for_owner:'Waiting for you',done:'Done',paused:'Paused'};
 async function loadTasks(){if(!session)return;try{const d=await api('tasks');renderTasks(d.tasks||[])}catch(e){$('task-status').textContent=e.message}}
@@ -187,14 +187,20 @@ async function send(e){
     await api('commit-prepared',{message:content,reply:d.reply,preparedMemories:d.preparedMemories||[],profileUpdate:d.profileUpdate||null});
     const saved=await api('history');renderMemories(saved.memories||[]);
    }catch(prefetchError){
-    // Predictive preparation is optional. If it hits a rate limit or provider error,
-    // discard its partial text and run a normal chat request instead.
-    console.warn('Predictive preparation failed; retrying as a normal chat request:',String(prefetchError).slice(0,160));
-    renderer.flush();
-    loading.firstElementChild.textContent='I’m here — let me think this through…';
-    const fallback=await streamChat(content,text=>renderer.push(text),{intent:predictIntent(content).code});
-    renderer.push(fallback.reply);await renderer.finish();
-    renderMemories(fallback.memories||[]);
+    // Once a prepared reply exists, never send the same user message again just
+    // because its memory/profile commit failed. That could create duplicate replies.
+    if(d&&typeof d.reply==='string'&&d.reply){
+     console.warn('Prepared reply delivered; post-reply save needs a retry:',String(prefetchError).slice(0,160));
+     chatStatus.textContent='Your reply is visible. Some memory updates may not have synced yet.';
+     renderMemories(d.memories||[]);
+    }else{
+     console.warn('Predictive preparation failed; retrying as a normal chat request:',String(prefetchError).slice(0,160));
+     renderer.flush();
+     loading.firstElementChild.textContent='I’m here — let me think this through…';
+     const fallback=await streamChat(content,text=>renderer.push(text),{intent:predictIntent(content).code});
+     renderer.push(fallback.reply);await renderer.finish();
+     renderMemories(fallback.memories||[]);
+    }
    }
   }else{
    const d=await streamChat(content,text=>renderer.push(text),{intent:predictIntent(content).code});
@@ -208,6 +214,10 @@ async function send(e){
   chatStatus.textContent='';
  }finally{prefetchJob=null;busy=false;$('send').disabled=false;$('message').focus()}
 }
+window.addEventListener('online',()=>{chatStatus.textContent='Connection restored.';if(session&&!busy)void loadHistoryAndMemories()});
+window.addEventListener('offline',()=>{chatStatus.textContent='You appear to be offline. Your current conversation stays on screen; reconnect and continue when ready.'});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&session&&!busy){void client.auth.getSession().then(({data})=>{if(data&&data.session)session=data.session;return loadHistoryAndMemories()}).catch(()=>{chatStatus.textContent='Reconnected to the page. If a message is missing, refresh the conversation.'})}});
+window.addEventListener('pageshow',()=>{if(session&&!busy)void loadHistoryAndMemories()});
 $('adult-confirm').addEventListener('change',()=>{$('adult-continue').disabled=!$('adult-confirm').checked});$('adult-continue').addEventListener('click',()=>{if(!$('adult-confirm').checked)return;adultConfirmed=true;$('adult-gate').classList.add('hidden');});$('guest-start').addEventListener('click',startGuest);$('create-memory-code').addEventListener('click',createMemoryCode);$('create-memory-account').addEventListener('click',createMemoryAccount);$('use-memory-code').addEventListener('click',enterMemoryCode);$('copy-memory-code').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('memory-code').value);authStatus.textContent='Memory code copied. Store it somewhere private.'}catch(e){authStatus.textContent='Copy was blocked. Please select and copy the code manually.'}});$('chat-form').addEventListener('submit',send);$('message').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!$('send').disabled)$('chat-form').requestSubmit();}});$('signout').addEventListener('click',async()=>{if(session?.user?.is_anonymous&&!confirm('End this guest session? Your guest history may no longer be recoverable. Consider keeping this browser session.'))return;if(client)await client.auth.signOut();session=null;renderAuth();$('messages').replaceChildren();});$('tasks-toggle').addEventListener('click',()=>{const opening=$('tasks-panel').classList.contains('hidden');$('tasks-panel').classList.toggle('hidden',!opening);$('tasks-toggle').setAttribute('aria-expanded',String(opening));if(opening)$('tasks-panel').scrollIntoView({behavior:'smooth',block:'nearest'});});$('task-form').addEventListener('submit',async e=>{e.preventDefault();const b=$('task-create');b.disabled=true;$('task-status').textContent='Saving task…';try{await api('create-task',{title:$('task-title').value,details:$('task-details').value});$('task-title').value='';$('task-details').value='';$('task-status').textContent='Task saved. You can update its status as work progresses.';await loadTasks()}catch(error){$('task-status').textContent=error.message}finally{b.disabled=false}});$('memory-toggle').addEventListener('click',()=>{const opening=memoryPanel.classList.contains('hidden');memoryPanel.classList.toggle('hidden',!opening);$('memory-toggle').setAttribute('aria-expanded',String(opening));if(opening)memoryPanel.scrollIntoView({behavior:'smooth',block:'nearest'});});$('refresh-memory').addEventListener('click',async()=>{try{const d=await api('history');renderMemories(d.memories||[]);$('memory-status').textContent='Memories refreshed.'}catch(e){$('memory-status').textContent=e.message}});$('delete-all').addEventListener('click',async()=>{if(!confirm('Delete all saved memories? This cannot be undone.'))return;try{await api('forget-all');renderMemories([]);$('memory-status').textContent='All saved memories deleted.'}catch(e){$('memory-status').textContent=e.message}});
 $('organize-memory').addEventListener('click',async()=>{const button=$('organize-memory');button.disabled=true;try{const offset=Number(button.dataset.nextOffset||0);const cutoff=button.dataset.cutoff||new Date().toISOString();button.dataset.cutoff=cutoff;$('memory-status').textContent='Reviewing memory batch from record '+(offset+1)+'…';const result=await maintenanceApi('memory-maintenance',{offset,batch_size:20,cutoff});const saved=await api('history');renderMemories(saved.memories||[]);if(result.has_more){button.dataset.nextOffset=String(result.next_offset||offset+20);button.textContent='Continue organizing memories';$('memory-status').textContent='Batch reviewed: '+result.processed+' records, '+result.superseded+' old entries archived, '+result.added+' consolidated memories added. Select Continue to review the next batch.'}else{button.dataset.nextOffset='0';button.dataset.cutoff='';button.textContent='Organize old memories';$('memory-status').textContent='Memory review complete for the available history. '+(result.summary||'No further active memories remain.')}}catch(e){$('memory-status').textContent=e.message}finally{button.disabled=false}});
 setup();
