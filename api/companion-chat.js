@@ -341,6 +341,13 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       res.setHeader('X-Accel-Buffering','no');
       if(typeof res.flushHeaders==='function')res.flushHeaders();
       const sendEvent=(event,payload)=>res.write('event: '+event+'\ndata: '+JSON.stringify(payload)+'\n\n');
+      // Mobile browsers and intermediate proxies may close an idle SSE stream while
+      // the model is thinking. Send SSE comments so the connection stays active.
+      const heartbeat=setInterval(()=>{
+        if(res.writableEnded||res.destroyed){clearInterval(heartbeat);return;}
+        try{res.write(': keep-alive\\n\\n')}catch(_){clearInterval(heartbeat)}
+      },10000);
+      if(typeof heartbeat.unref==='function')heartbeat.unref();
       const reader=aiRes.body.getReader();
       const decoder=new TextDecoder();
       let pending='',fullReply='',visibleSent=0,streamError=null;
@@ -424,7 +431,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       if(!res.headersSent)return res.status(502).json({ok:false,error:error.name==='AbortError'?'The companion took too long to respond. Please try again.':'The companion service is temporarily unavailable.'});
       try{res.write('event: error\ndata: '+JSON.stringify({error:'The companion service is temporarily unavailable.'})+'\n\n')}catch(_){}
       return res.end();
-    } finally {clearTimeout(timeout)}
+    } finally {clearTimeout(timeout);clearInterval(heartbeat)}
   } catch(error) {
     console.error('Companion request failed:',String(error).slice(0,300));
     return res.status(502).json({ok:false,error:error.name==='AbortError'?'The companion took too long to respond. Please try again.':'The companion service is temporarily unavailable.'});
