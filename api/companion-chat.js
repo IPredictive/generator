@@ -8,7 +8,7 @@ const MAX_MEMORIES = 20;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAX_CHAT_REQUESTS_PER_WINDOW = 30;
 
-const { isAdultCreativeRequest, composeAdultLayerReply } = require('../lib/adult-intimacy');
+const { isAdultCreativeRequest, composeAdultLayerReply, buildAdultCreativeMessages } = require('../lib/adult-intimacy');
 const requestBuckets = new Map();
 
 module.exports = async function handler(req, res) {
