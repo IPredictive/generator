@@ -89,6 +89,8 @@ module.exports = async function handler(req, res) {
     }
     if (action !== 'chat') return res.status(400).json({ok:false,error:'Unknown action.'});
     const speculative = body.speculative === true;
+    const requestStartedAt = Date.now();
+    let firstTokenAt = null;
     const responseStyle = ['adaptive','brief','detailed'].includes(String(body.responseStyle||'')) ? String(body.responseStyle) : 'adaptive';
     const responseStyleInstruction = responseStyle === 'brief' ? 'Keep the answer especially brief: usually 1-3 sentences, with no extra sections unless essential.' : responseStyle === 'detailed' ? 'Give a fuller explanation with clear headings or numbered steps when helpful, but avoid unnecessary repetition.' : 'Use natural judgment: short for simple messages and step-by-step for complex tasks.';
     const intentLabels = {continue:'continuing an existing task',code:'coding or website work',translate:'translation or language help',write:'writing or editing text',plan:'planning next steps',explain:'asking for an explanation or answer',talk:'personal conversation',general:'general message'};
@@ -179,6 +181,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
           let packet;try{packet=JSON.parse(payload)}catch(_){continue}
           const choice=packet&&packet.choices&&packet.choices[0];
           if(choice&&choice.delta&&typeof choice.delta.content==='string'){
+            if(firstTokenAt===null)firstTokenAt=Date.now();
             fullReply+=choice.delta.content;
             const markerAt=fullReply.indexOf(marker);
             let safeEnd=markerAt;
@@ -214,6 +217,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
         if(safe.length)writes.push(db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save Companion memory:',String(e).slice(0,160));return null}));
         await Promise.all(writes);
       }
+      console.info('[CompanionMetrics]',JSON.stringify({intent:intentCode,speculative,firstTokenMs:firstTokenAt===null?null:firstTokenAt-requestStartedAt,totalMs:Date.now()-requestStartedAt,responseChars:reply.length,historyMessages:history.length,memoryCount:(memories||[]).length}));
       sendEvent('done',{ok:true,memories:memories||[],preparedMemories:safe.map(m=>({memory:m.memory,category:m.category}))});
       return res.end();
     } catch(error) {
