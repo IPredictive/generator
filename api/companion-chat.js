@@ -160,7 +160,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
 \n\nReply to the user's latest message. Then append a separate machine-readable JSON block at the very end in exactly this format: <COMPANION_META>{"memories":[{"memory":"short durable fact or preference","category":"preference|personal_story|important_person|routine|communication_style|goal"}]}</COMPANION_META>. Include only 0-2 genuinely useful, non-sensitive, durable details explicitly shared by the user in this latest message. Never save guesses, transient moods, medical/financial/sexual details, passwords, account data, or information about third parties that is not necessary. Do not repeat existing memories. If none qualify, return an empty memories array. The user can inspect and delete saved memories.`;
     // Adult creative/flirtatious conversation is composed by AplusCity's own layer,
     // not by asking AGNES to generate erotic text. Do not persist this sensitive content as memory.
-    if (isAdultCreativeRequest(message)) {
+    if (isAdultCreativeRequest(message, history)) {
       let reply = '';
       const writingKey = process.env.APLUSCITY_WRITING_API_KEY;
       const writingBase = (process.env.APLUSCITY_WRITING_BASE_URL || '').replace(/\/$/, '');
