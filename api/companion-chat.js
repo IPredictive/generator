@@ -8,33 +8,7 @@ const MAX_MEMORIES = 20;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAX_CHAT_REQUESTS_PER_WINDOW = 30;
 
-// AplusCity's own adult-conversation layer: creative/flirtatious requests are handled
-// locally instead of asking AGNES to generate erotic prose. Factual sexual-health
-// questions still go through the information model.
-function isAdultCreativeRequest(value) {
-  const text = String(value || '');
-  if (/(避孕|性病|性健康|感染|怀孕|生理|症状|医学|医疗|安全套|consent|contraception|pregnan|medical|health advice|STD|STI)/i.test(text)) return false;
-  return /(调情|暧昧|撩我|撩一下|挑逗|情欲|性幻想|成人角色扮演|情色故事|情色|性爱|性欲|性感一点|床上|做爱|成人亲密|暧昧互动|dirty talk|erotic|sexy|flirt|seductive|sexual fantasy|adult roleplay|turn me on|horny)/i.test(text);
-}
-
-function composeAdultLayerReply(value) {
-  const text = String(value || '');
-  if (/(写|创作|故事|角色扮演|幻想|roleplay|story|fantasy)/i.test(text)) {
-    return '可以。我们把它写成成年人之间自愿、彼此有感觉的亲密情境，语气可以成熟、暧昧，也可以更直接一些。我会把重点放在吸引力、张力、情绪和双方的回应上，不会评判你的幻想。你想要偏浪漫温柔、强烈挑逗，还是带一点主导与被主导的氛围？';
-  }
-  if (/(撩我|调情|暧昧|挑逗|flirt|dirty talk|sexy|seductive)/i.test(text)) {
-    return '好啊，我们可以把语气调得更暧昧、更有火花一点。😉 我会跟着你的节奏来，不会突然把普通聊天变成亲密话题；你想要温柔撩人，还是大胆直接一点？';
-  }
-  if (/(性欲|想要|想做爱|horny|turn me on|sexual desire)/i.test(text)) {
-    return '你可以坦然说出自己的欲望，不需要为此感到羞耻。我们可以成熟、自然地聊吸引力、期待和幻想，也会把成年人之间的自愿与界限放在心上。你现在更想倾诉感受，还是想进行一段带点暧昧的互动？';
-  }
-  return '可以，我们可以自然地聊成年人的亲密、吸引力和双方自愿的幻想，不必把话题硬转成医学科普，也不会因为你提起这些就评判你。我会尊重你的节奏和界限。你想从哪一部分开始？';
-}
-
-// Never persist credentials, highly sensitive personal data, or sexual/intimate details as long-term memory.
-function isSensitiveMemory(value) {
-  return /(password|passcode|credit card|bank account|诊断|病史|medical condition|ssn|身份证|账户号码|性偏好|性幻想|性经历|性需求|性欲|性生活|性爱|性行为|亲密经历|性取向|sexual preference|sexual fantasy|sexual experience|sexual desire|sex life|sexual activity|intimate experience|sexual orientation|erotic preference)/i.test(String(value || ''));
-}
+const { isAdultCreativeRequest, composeAdultLayerReply } = require('../lib/adult-intimacy');
 const requestBuckets = new Map();
 
 module.exports = async function handler(req, res) {
