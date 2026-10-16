@@ -228,6 +228,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       console.error('Adult roleplay module unavailable; continuing with standard chat:', String(moduleError).slice(0, 180));
     }
     if (adultRequest && adultEngine) {
+      const adultHistory = await db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.adult&select=role,content&order=created_at.desc&limit=12').then(rows=>(rows||[]).reverse()).catch(()=>[]);
       let reply = '';
       const writingKey = process.env.APLUSCITY_WRITING_API_KEY;
       const writingBase = (process.env.APLUSCITY_WRITING_BASE_URL || '').replace(/\/$/, '');
@@ -244,7 +245,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
               temperature: 0.85,
               max_tokens: 1200,
               stream: false,
-              messages: adultEngine.buildAdultCreativeMessages(message, history)
+              messages: adultEngine.buildAdultCreativeMessages(message, adultHistory)
             }),
             signal: writingController.signal
           });
@@ -260,7 +261,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
           clearTimeout(writingTimeout);
         }
       }
-      if (!reply) reply = adultEngine.composeAdultLayerReply(message, { recentMessages: history.slice(-12) });
+      if (!reply) reply = adultEngine.composeAdultLayerReply(message, { recentMessages: adultHistory });
       res.status(200);
       res.setHeader('Content-Type','text/event-stream; charset=utf-8');
       res.setHeader('Cache-Control','no-cache, no-transform');
