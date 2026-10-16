@@ -8,7 +8,8 @@ const MAX_MEMORIES = 20;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAX_CHAT_REQUESTS_PER_WINDOW = 30;
 
-const { isAdultCreativeRequest, composeAdultLayerReply, buildAdultCreativeMessages } = require('../lib/adult-intimacy');
+// Load the optional adult-roleplay module lazily so a problem in that module cannot
+// prevent ordinary Companion chat from starting.
 const requestBuckets = new Map();
 
 // Keep credentials and sensitive personal details out of durable Companion memory.
@@ -212,7 +213,15 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
 \n\nReply to the user's latest message. Then append a separate machine-readable JSON block at the very end in exactly this format: <COMPANION_META>{"memories":[{"memory":"short durable fact or preference","category":"preference|personal_story|important_person|routine|communication_style|goal"}]}</COMPANION_META>. Include only 0-2 genuinely useful, non-sensitive, durable details explicitly shared by the user in this latest message. Never save guesses, transient moods, medical/financial/sexual details, passwords, account data, or information about third parties that is not necessary. Do not repeat existing memories. If none qualify, return an empty memories array. The user can inspect and delete saved memories.`;
     // Adult creative/flirtatious conversation is composed by AplusCity's own layer,
     // not by asking AGNES to generate erotic text. Do not persist this sensitive content as memory.
-    if (isAdultCreativeRequest(message, history)) {
+    let adultEngine = null;
+    let adultRequest = false;
+    try {
+      adultEngine = require('../lib/adult-intimacy');
+      adultRequest = adultEngine.isAdultCreativeRequest(message, history);
+    } catch (moduleError) {
+      console.error('Adult roleplay module unavailable; continuing with standard chat:', String(moduleError).slice(0, 180));
+    }
+    if (adultRequest && adultEngine) {
       let reply = '';
       const writingKey = process.env.APLUSCITY_WRITING_API_KEY;
       const writingBase = (process.env.APLUSCITY_WRITING_BASE_URL || '').replace(/\/$/, '');
@@ -229,7 +238,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
               temperature: 0.85,
               max_tokens: 1200,
               stream: false,
-              messages: buildAdultCreativeMessages(message, history)
+              messages: adultEngine.buildAdultCreativeMessages(message, history)
             }),
             signal: writingController.signal
           });
@@ -245,7 +254,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
           clearTimeout(writingTimeout);
         }
       }
-      if (!reply) reply = composeAdultLayerReply(message, { recentMessages: history.slice(-12) });
+      if (!reply) reply = adultEngine.composeAdultLayerReply(message, { recentMessages: history.slice(-12) });
       res.status(200);
       res.setHeader('Content-Type','text/event-stream; charset=utf-8');
       res.setHeader('Cache-Control','no-cache, no-transform');
