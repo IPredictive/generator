@@ -74,6 +74,18 @@ module.exports = async function handler(req, res) {
       await db('companion_memories?id=eq.'+encodeURIComponent(id)+'&user_id=eq.'+encodeURIComponent(user.id),{method:'DELETE'});
       return res.status(200).json({ok:true});
     }
+    if (action === 'update-memory') {
+      const id=String(body.id||'');
+      const memory=String(body.memory||'').trim();
+      const category=String(body.category||'preference');
+      const validCats=new Set(['preference','personal_story','important_person','routine','communication_style','goal']);
+      if(!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ok:false,error:'Invalid memory ID.'});
+      if(!memory||memory.length>500) return res.status(400).json({ok:false,error:'Memory must be between 1 and 500 characters.'});
+      if(!validCats.has(category)) return res.status(400).json({ok:false,error:'Invalid memory category.'});
+      if(isSensitiveMemory(memory)) return res.status(400).json({ok:false,error:'Please do not save passwords, sensitive personal details, or intimate information as long-term memory.'});
+      await db('companion_memories?id=eq.'+encodeURIComponent(id)+'&user_id=eq.'+encodeURIComponent(user.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:{memory,category,updated_at:new Date().toISOString()}});
+      return res.status(200).json({ok:true});
+    }
     if (action === 'forget-all') {
       await db('companion_memories?user_id=eq.'+encodeURIComponent(user.id),{method:'DELETE'});
       return res.status(200).json({ok:true});
