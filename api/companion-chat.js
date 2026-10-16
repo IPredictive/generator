@@ -11,6 +11,12 @@ const MAX_CHAT_REQUESTS_PER_WINDOW = 30;
 const { isAdultCreativeRequest, composeAdultLayerReply, buildAdultCreativeMessages } = require('../lib/adult-intimacy');
 const requestBuckets = new Map();
 
+// Keep credentials and sensitive personal details out of durable Companion memory.
+function isSensitiveMemory(value) {
+  const text = String(value || '');
+  return /(password|passcode|\bpin\b|one.?time.?password|\botp\b|api.?key|secret.?key|access.?token|credit.?card|debit.?card|bank account|银行卡|银行账户|信用卡|密码|验证码|身份证|护照号码|社会安全号码|\bssn\b|sexual fantasy|sexual experience|intimate details|性爱|性幻想|性经历|亲密细节|性欲|性偏好|medical diagnosis|medical condition|病史|疾病诊断|病情|financial account|salary|收入金额|债务金额|账户余额)/i.test(text);
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
