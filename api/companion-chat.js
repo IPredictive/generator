@@ -166,7 +166,7 @@ module.exports = async function handler(req, res) {
       db('companion_tasks?user_id=eq.'+encodeURIComponent(user.id)+'&select=title,details,status,due_at,followup_note,outcome,result_notes&order=updated_at.desc&limit=12').catch(e=>{console.error('Task context unavailable:',String(e).slice(0,120));return []})
     ]);
     // Keep the newest useful conversation context within a predictable size budget.
-    const orderedHistory=(recent||[]).reverse();
+    const orderedHistory=(recent||[]).filter(item=>!isSensitiveMemory(item.content)).reverse();
     const history=[];
     let historyChars=0;
     for(let i=orderedHistory.length-1;i>=0;i--){
@@ -190,7 +190,8 @@ module.exports = async function handler(req, res) {
         }
       }else queryTerms.add(term);
     }
-    const rankedMemories=(memories||[]).map((m,index)=>{
+    const safeMemories=(memories||[]).filter(m=>!isSensitiveMemory(m.memory));
+    const rankedMemories=safeMemories.map((m,index)=>{
       const value=String(m.memory||'').toLowerCase();
       let score=0;
       for(const term of queryTerms)if(value.includes(term))score+=term.length>=4?3:1;
@@ -344,7 +345,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       if(reply.length>visibleSent)sendEvent('delta',{text:reply.slice(visibleSent)});
       if(streamError)console.error('Companion stream warning:',String(streamError));
       const validCats=new Set(['preference','personal_story','important_person','routine','communication_style','goal']);
-      const existing=new Set((memories||[]).map(m=>String(m.memory).toLowerCase()));
+      const existing=new Set(safeMemories.map(m=>String(m.memory).toLowerCase()));
       const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!isSensitiveMemory(m.memory)&&!existing.has(m.memory.trim().toLowerCase())).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
       if(!speculative){
         // Save only after the user actually sends the message.
