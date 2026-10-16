@@ -68,12 +68,54 @@ module.exports = async function handler(req, res) {
     if (action === 'commit-prepared') {
       const message=String(body.message||'').trim(), reply=String(body.reply||'').trim();
       if(!message||message.length>MAX_MESSAGE||!reply||reply.length>12000) return res.status(400).json({ok:false,error:'Prepared reply is invalid or expired. Please send your message again.'});
+
+      // Never trust a client-supplied conversation mode. Re-run the same server-side
+      // adult-intent classifier before committing speculative output. Fail closed if
+      // the classifier is unavailable, so private content can never fall into general history.
+      let adultRequest=false;
+      try {
+        const adultEngine=require('../lib/adult-intimacy');
+        const generalHistory=await db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.general&select=role,content&order=created_at.desc&limit='+MAX_HISTORY);
+        adultRequest=adultEngine.isAdultCreativeRequest(message,(generalHistory||[]).reverse());
+      } catch(classifierError) {
+        console.error('Prepared reply mode classification failed; refusing to commit:',String(classifierError).slice(0,160));
+        return res.status(503).json({ok:false,error:'I could not safely save this prepared reply. Please send the message again.'});
+      }
+
+      const mode=adultRequest?'adult':'general';
+      await db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[
+        {user_id:user.id,role:'user',content:message,conversation_mode:mode},
+        {user_id:user.id,role:'assistant',content:reply,conversation_mode:mode}
+      ]});
+
+      // Adult conversations are deliberately excluded from durable memories and profile evolution.
+      if(adultRequest) return res.status(200).json({ok:true,conversationMode:'adult',profileUpdated:false});
+
       const validCats=new Set(['preference','personal_story','important_person','routine','communication_style','goal']);
       const proposed=Array.isArray(body.preparedMemories)?body.preparedMemories.slice(0,2):[];
       const safe=proposed.filter(m=>m&&typeof m.memory==='string'&&m.memory.trim().length<=500&&validCats.has(m.category)&&!isSensitiveMemory(m.memory)).map(m=>({user_id:user.id,memory:m.memory.trim(),category:m.category}));
-      await db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[{user_id:user.id,role:'user',content:message,conversation_mode:'general'},{user_id:user.id,role:'assistant',content:reply,conversation_mode:'general'}]});
-      if(safe.length)await db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save prepared Companion memory:',String(e).slice(0,160))});
-      return res.status(200).json({ok:true});
+      if(safe.length) await db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save prepared Companion memory:',String(e).slice(0,160))});
+
+      let profileUpdated=false;
+      const p=body.profileUpdate&&typeof body.profileUpdate==='object'&&!Array.isArray(body.profileUpdate)?body.profileUpdate:null;
+      if(p){
+        const clip=(value,max)=>typeof value==='string'?value.trim().slice(0,max):'';
+        const list=(value)=>Array.isArray(value)?value.filter(x=>typeof x==='string'&&!isSensitiveMemory(x)).map(x=>x.trim().slice(0,240)).filter(Boolean).slice(0,8):[];
+        const safeProfile={
+          summary:clip(p.summary,1200),
+          communication_style:clip(p.communication_style,600),
+          stable_preferences:list(p.stable_preferences),
+          active_goals:list(p.active_goals),
+          open_loops:list(p.open_loops),
+          evolving_notes:list(p.evolving_notes)
+        };
+        if(!isSensitiveMemory(safeProfile.summary)&&!isSensitiveMemory(safeProfile.communication_style)){
+          const existing=await db('companion_profiles?user_id=eq.'+encodeURIComponent(user.id)+'&select=version&limit=1').catch(()=>[]);
+          await db('companion_profiles?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:[{user_id:user.id,summary:safeProfile.summary,profile:safeProfile,version:(Number(existing&&existing[0]&&existing[0].version)||0)+1,updated_at:new Date().toISOString()}]});
+          profileUpdated=true;
+        }
+      }
+      return res.status(200).json({ok:true,conversationMode:'general',memoriesSaved:safe.length,profileUpdated});
     }
     const taskStatuses=new Set(['new','understood','planned','in_progress','waiting_for_owner','done','paused']);
     if (action === 'tasks') {
@@ -369,7 +411,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
         await Promise.all(writes);
       }
       console.info('[CompanionMetrics]',JSON.stringify({intent:intentCode,speculative,firstTokenMs:firstTokenAt===null?null:firstTokenAt-requestStartedAt,totalMs:Date.now()-requestStartedAt,responseChars:reply.length,historyMessages:history.length,memoryCount:(memories||[]).length}));
-      sendEvent('done',{ok:true,memories:memories||[],preparedMemories:safe.map(m=>({memory:m.memory,category:m.category}))});
+      sendEvent('done',{ok:true,memories:memories||[],preparedMemories:safe.map(m=>({memory:m.memory,category:m.category})),profileUpdate:speculative?profileUpdate:null});
       return res.end();
     } catch(error) {
       console.error('Companion request failed:',String(error).slice(0,300));
