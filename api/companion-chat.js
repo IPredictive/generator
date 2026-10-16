@@ -74,6 +74,40 @@ module.exports = async function handler(req, res) {
       if(safe.length)await db('companion_memories',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:safe}).catch(e=>{console.error('Could not save prepared Companion memory:',String(e).slice(0,160))});
       return res.status(200).json({ok:true});
     }
+    const taskStatuses=new Set(['new','understood','planned','in_progress','waiting_for_owner','done','paused']);
+    if (action === 'tasks') {
+      const tasks=await db('companion_tasks?user_id=eq.'+encodeURIComponent(user.id)+'&select=id,title,details,status,due_at,followup_note,created_at,updated_at&order=updated_at.desc&limit=100');
+      return res.status(200).json({ok:true,tasks:tasks||[]});
+    }
+    if (action === 'create-task') {
+      const title=String(body.title||'').trim();
+      const details=String(body.details||'').trim();
+      const status=taskStatuses.has(String(body.status||''))?String(body.status):'new';
+      const dueAt=body.due_at?new Date(body.due_at):null;
+      if(!title||title.length>240) return res.status(400).json({ok:false,error:'Task title must be between 1 and 240 characters.'});
+      if(details.length>1200) return res.status(400).json({ok:false,error:'Task details must be under 1,200 characters.'});
+      if(body.due_at&&(!dueAt||Number.isNaN(dueAt.getTime()))) return res.status(400).json({ok:false,error:'Please provide a valid due date.'});
+      const created=await db('companion_tasks',{method:'POST',headers:{Prefer:'return=representation'},body:[{user_id:user.id,title,details,status,due_at:dueAt?dueAt.toISOString():null}]});
+      return res.status(200).json({ok:true,task:Array.isArray(created)?created[0]:created});
+    }
+    if (action === 'update-task') {
+      const id=String(body.id||'');
+      if(!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ok:false,error:'Invalid task ID.'});
+      const patch={updated_at:new Date().toISOString()};
+      if(body.title!==undefined){patch.title=String(body.title||'').trim();if(!patch.title||patch.title.length>240)return res.status(400).json({ok:false,error:'Task title must be between 1 and 240 characters.'});}
+      if(body.details!==undefined){patch.details=String(body.details||'').trim();if(patch.details.length>1200)return res.status(400).json({ok:false,error:'Task details must be under 1,200 characters.'});}
+      if(body.status!==undefined){patch.status=String(body.status);if(!taskStatuses.has(patch.status))return res.status(400).json({ok:false,error:'Invalid task status.'});}
+      if(body.followup_note!==undefined){patch.followup_note=String(body.followup_note||'').trim();if(patch.followup_note.length>800)return res.status(400).json({ok:false,error:'Follow-up note must be under 800 characters.'});}
+      if(body.due_at!==undefined){const dueAt=body.due_at?new Date(body.due_at):null;if(body.due_at&&Number.isNaN(dueAt.getTime()))return res.status(400).json({ok:false,error:'Please provide a valid due date.'});patch.due_at=dueAt?dueAt.toISOString():null;}
+      await db('companion_tasks?id=eq.'+encodeURIComponent(id)+'&user_id=eq.'+encodeURIComponent(user.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:patch});
+      return res.status(200).json({ok:true});
+    }
+    if (action === 'delete-task') {
+      const id=String(body.id||'');
+      if(!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ok:false,error:'Invalid task ID.'});
+      await db('companion_tasks?id=eq.'+encodeURIComponent(id)+'&user_id=eq.'+encodeURIComponent(user.id),{method:'DELETE'});
+      return res.status(200).json({ok:true});
+    }
     if (action === 'forget') {
       const id=String(body.id||'');
       if(!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ok:false,error:'Invalid memory ID.'});
