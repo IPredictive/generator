@@ -34,6 +34,9 @@ module.exports = async function handler(req, res) {
     if (!user || !user.id) return res.status(401).json({ok:false,error:'Please sign in again.'});
     const body = req.body || {};
     const action = String(body.action || 'chat');
+    if ((action === 'chat' || action === 'commit-prepared') && body.adultConfirmed !== true) {
+      return res.status(403).json({ok:false,error:'Please confirm that you are 18 or older before using adult chat features.'});
+    }
     if (action === 'chat') {
       const now = Date.now();
       for (const [key, bucket] of requestBuckets) {
