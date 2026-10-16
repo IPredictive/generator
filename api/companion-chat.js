@@ -133,7 +133,7 @@ module.exports = async function handler(req, res) {
     }
     if (action === 'history') {
       const [messages,memories]=await Promise.all([
-        db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&select=id,role,content,created_at&order=created_at.desc&limit=100'),
+        db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.general&select=id,role,content,created_at&order=created_at.desc&limit=100'),
         db('companion_memories?user_id=eq.'+encodeURIComponent(user.id)+'&is_active=eq.true&select=id,memory,category,updated_at&order=updated_at.desc&limit='+MAX_MEMORIES)
       ]);
       const orderedMessages=(messages||[]).reverse().sort((a,b)=>{
