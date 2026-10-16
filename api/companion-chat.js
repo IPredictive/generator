@@ -168,13 +168,13 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       res.setHeader('Connection','keep-alive');
       res.setHeader('X-Accel-Buffering','no');
       if(typeof res.flushHeaders==='function')res.flushHeaders();
-      const sendLocalEvent=(event,payload)=>res.write('event: '+event+'\\ndata: '+JSON.stringify(payload)+'\\n\\n');
+      const sendLocalEvent=(event,payload)=>res.write('event: '+event+'\ndata: '+JSON.stringify(payload)+'\n\n');
       sendLocalEvent('delta',{text:reply});
       if (!speculative) {
         await db('companion_messages',{method:'POST',headers:{Prefer:'return=minimal'},body:[
           {user_id:user.id,role:'user',content:message},
           {user_id:user.id,role:'assistant',content:reply}
-        ]});
+        ]}).catch(e=>{console.error('Could not save adult conversation:',String(e).slice(0,160));return null;});
       }
       sendLocalEvent('done',{ok:true,memories:memories||[],preparedMemories:[]});
       return res.end();
