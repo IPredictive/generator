@@ -345,7 +345,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       // the model is thinking. Send SSE comments so the connection stays active.
       const heartbeat=setInterval(()=>{
         if(res.writableEnded||res.destroyed){clearInterval(heartbeat);return;}
-        try{res.write(': keep-alive\\n\\n')}catch(_){clearInterval(heartbeat)}
+        try{res.write(': keep-alive\n\n')}catch(_){clearInterval(heartbeat)}
       },10000);
       if(typeof heartbeat.unref==='function')heartbeat.unref();
       const reader=aiRes.body.getReader();
