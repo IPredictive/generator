@@ -53,8 +53,8 @@ let client=null,session=null,busy=false,adultConfirmed=false;
 const authPanel=$('auth-panel'),chatPanel=$('chat-panel'),authStatus=$('auth-status'),chatStatus=$('chat-status'),memoryPanel=$('memory-panel');
 async function setup(){
  try{
-  const r=await fetch('/api/companion-config',{cache:'no-store'});const cfg=await r.json();
-  if(!r.ok||!cfg.url||!cfg.anonKey||!window.supabase){authStatus.textContent=cfg.error||'Account service is not configured yet. The companion database needs to be connected before accounts and cross-device memory can work.'; $('guest-start').disabled=true;$('create-memory-code').disabled=true;$('use-memory-code').disabled=true;return}
+  const r=await fetch('/api/companion-config',{cache:'no-store'});const raw=await r.text();let cfg=null;try{cfg=raw?JSON.parse(raw):null}catch(_){const detail=raw.replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim().slice(0,160);throw new Error('Account service returned an unreadable response (HTTP '+r.status+'). '+(detail||'Please try again later.'))}
+  if(!r.ok||!cfg||!cfg.url||!cfg.anonKey||!window.supabase){authStatus.textContent=(cfg&&cfg.error)||('Account service is not ready (HTTP '+r.status+'). Please try again later.'); $('guest-start').disabled=true;$('create-memory-code').disabled=true;$('use-memory-code').disabled=true;return}
   client=window.supabase.createClient(cfg.url,cfg.anonKey);
   const {data}=await client.auth.getSession();session=data.session;
   client.auth.onAuthStateChange((_event,next)=>{session=next;renderAuth();if(session)loadHistoryAndMemories()});
