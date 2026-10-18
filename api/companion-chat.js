@@ -341,6 +341,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
     }
 
     const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),25000);
+    let heartbeat=null;
     try {
       const aiRes=await fetch('https://apihub.agnes-ai.com/v1/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,temperature:0.6,max_tokens:900,stream:true,messages:[{role:'system',content:system},...history.map(m=>({role:m.role,content:m.content})),{role:'user',content:message}] }),signal:controller.signal});
       if(!aiRes.ok){const raw=await aiRes.text();console.error('Agnes Companion error:',aiRes.status,raw.slice(0,200));return res.status(502).json({ok:false,error:aiRes.status===429?'The AI service is busy or has reached its limit. Please try again shortly.':'The companion could not respond just now. Please try again.'})}
@@ -354,7 +355,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       const sendEvent=(event,payload)=>res.write('event: '+event+'\ndata: '+JSON.stringify(payload)+'\n\n');
       // Mobile browsers and intermediate proxies may close an idle SSE stream while
       // the model is thinking. Send SSE comments so the connection stays active.
-      const heartbeat=setInterval(()=>{
+      heartbeat=setInterval(()=>{
         if(res.writableEnded||res.destroyed){clearInterval(heartbeat);return;}
         try{res.write(': keep-alive\n\n')}catch(_){clearInterval(heartbeat)}
       },10000);
@@ -444,7 +445,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
       if(!res.headersSent)return res.status(502).json({ok:false,error:error.name==='AbortError'?'The companion took too long to respond. Please try again.':'The companion service is temporarily unavailable.'});
       try{res.write('event: error\ndata: '+JSON.stringify({error:'The companion service is temporarily unavailable.'})+'\n\n')}catch(_){}
       return res.end();
-    } finally {clearTimeout(timeout);clearInterval(heartbeat)}
+    } finally {clearTimeout(timeout);if(heartbeat)clearInterval(heartbeat)}
   } catch(error) {
     console.error('Companion request failed:',String(error).slice(0,300));
     return res.status(502).json({ok:false,error:error.name==='AbortError'?'The companion took too long to respond. Please try again.':'The companion service is temporarily unavailable.'});
