@@ -12,14 +12,54 @@ Source: https://github.com/IPredictive/generator
 - `studio.html`: free project brief builder. It assembles a structured brief locally in the visitor's browser and supports copy/save as a text file. Visitors can optionally request an AI proposal outline using the Agnes text API.
 - `api/inquiry.js`: validates enquiry submissions and forwards them to the configured Google Apps Script web app. A successful response must include a reference code.
 - `api/status.js`: looks up enquiry status by reference code through the same Google Apps Script web app.
-- `api/ai-assist.js`: optional, bounded text-only business analysis endpoint using `AGNES_API_KEY` and `agnes-3.0-flash`. It limits brief length, output tokens, request timeout, and applies best-effort per-instance throttling.
+- `api/ai-assist.js`: optional, bounded text-only business analysis endpoint using `AGNES_API_KEY` and `agnes-3.0-flash`.
+- `api/companion-brain.js`: secured, text-only companion-brain adapter for trusted applications such as ZEE. It accepts character/persona context, relevant memories, recent conversation history, and the latest message; returns `reply` and optional token usage. It does not access or write ZEE's database.
 - `api/generate.js` and `api/generate-status.js`: retired endpoints. Both return HTTP 410 and do not contact Agnes AI.
+
+## ZEE / AplusCity Companion brain adapter
+
+This adapter reuses the same OpenAI-compatible Agnes text API contract, but it does not reuse `api/ai-assist.js` because that endpoint has a business-proposal system prompt. ZEE remains responsible for user authentication, loading the correct character and user-specific memories, and persisting each turn. The adapter only generates a reply from the context sent by ZEE.
+
+Request: `POST /api/companion-brain`
+
+Headers:
+- `Content-Type: application/json`
+- `Authorization: Bearer <COMPANION_BRAIN_KEY>`
+
+Example request body:
+```json
+{
+  "agent": {
+    "name": "ZEE character name",
+    "persona": "Character persona notes",
+    "traits": "Character traits",
+    "currentState": "Read-only character/world state"
+  },
+  "memories": [{"summary": "A relevant remembered fact"}],
+  "history": [
+    {"role": "user", "content": "Earlier message"},
+    {"role": "assistant", "content": "Earlier reply"}
+  ],
+  "message": "The latest user message"
+}
+```
+
+Successful response includes `ok: true`, `reply`, `model`, and optional `usage`. The endpoint limits input context, history and memory counts, request duration, output tokens, and best-effort per-instance request rate. It requires both secrets below and does not expose the provider API key to browsers.
+
+### Required Vercel environment variables
+
+- `AGNES_API_KEY`: server-side provider key; never expose it in frontend code or commit it.
+- `COMPANION_BRAIN_KEY`: a separate, high-entropy shared secret. Configure the same value as a Supabase Edge Function secret in ZEE; the ZEE backend sends it in the Authorization header. Do not reuse a user password or publish this value.
+- `AGNES_COMPANION_MODEL` (optional): companion model; defaults to `AGNES_MODEL` or `agnes-3.0-flash`.
+- `AGNES_BASE_URL` (optional): defaults to `https://apihub.agnes-ai.com/v1`.
+
+Do not point a browser directly at this endpoint. Only a trusted server-side ZEE function should call it. The shared secret is an integration gate, not a replacement for ZEE's user authorization. ZEE must still scope every memory query to the correct user/agent before sending context.
 
 ## Cost-control decision
 
-Paid video generation has been intentionally retired. The site no longer offers a live video generation action. The video generation and polling endpoints are disabled in code to prevent calls to the paid provider. The `AGNES_API_KEY` environment variable is no longer required; it can be removed from Vercel after confirming the latest deployment is live.
+Paid video generation has been intentionally retired. The site no longer offers a live video generation action. The video generation and polling endpoints are disabled in code to prevent calls to the paid provider. The text endpoints can consume Agnes text-model quota; keep usage limits enabled and test with short requests. No video generation is used by the companion-brain adapter.
 
-The basic project brief is generated locally in the browser. If a visitor clicks “Analyse with AI”, the brief is sent to the server-side Agnes text endpoint for an AI proposal outline. This can consume the Agnes account's text-model quota. Video generation is disabled.
+The basic project brief is generated locally in the browser. If a visitor clicks “Analyse with AI”, the brief is sent to the server-side Agnes text endpoint for an AI proposal outline.
 
 ## Enquiry flow
 
@@ -37,22 +77,24 @@ The repository is linked to Vercel. With Git integration enabled, changes pushed
 
 After each change:
 1. Confirm the latest production deployment completed successfully.
-2. Open the production site in a private/incognito window.
-3. Test the free local brief builder, copy and text-file export; optionally test AI analysis with a short brief and confirm the video endpoints remain disabled.
-4. Test the enquiry form with a controlled test submission and save its reference code.
-5. Check the connected Google Sheet and confirm any intended email notification reaches `inquiry@aplusachiever.com`.
-6. Test the enquiry status tracker and verify desktop/mobile layouts.
+2. Test the free local brief builder, copy and text-file export.
+3. Test the companion adapter from a trusted backend with a short synthetic character context after both secrets have been configured.
+4. Confirm no API key or shared secret appears in browser code or logs.
+5. Test the enquiry form with a controlled test submission and verify its status tracker.
+6. Confirm the retired video endpoints remain disabled.
 
 ## Environment variables and privacy
 
-- Keep `AGNES_API_KEY` in Vercel for the optional text assistant. Never expose it in client-side code or commit it to GitHub. The video endpoints do not use this key.
+- Keep all provider and bridge secrets in Vercel environment settings; never commit them.
 - The enquiry and status APIs depend on the Google Apps Script deployment URL configured in source.
 - Add a privacy notice explaining how names, business details, email addresses, and enquiry content are used and retained.
 - Restrict access to the connected spreadsheet and Apps Script project.
 
 ## Troubleshooting
 
+- **Companion endpoint returns 503:** configure `AGNES_API_KEY` and `COMPANION_BRAIN_KEY` in Vercel, then redeploy.
+- **Companion endpoint returns 401:** verify ZEE's server-side `COMPANION_BRAIN_KEY` exactly matches the Vercel value.
+- **AI provider returns an error:** inspect Vercel function logs for `/api/companion-brain`; never log request bodies or secrets.
 - **Enquiry fails:** inspect Vercel function logs for `/api/inquiry`, then check the Apps Script deployment and execution logs.
-- **Reference code is shown but no email arrives:** check Apps Script email logic, recipient address, authorization, quotas, and spam folder. The Vercel endpoint itself does not send email.
 - **Status lookup fails:** confirm the reference code format and that Apps Script reads the same data source used by enquiry submission.
-- **Old video button or behavior appears:** hard-refresh the page and confirm the latest production deployment is active. The API endpoints return HTTP 410 and no longer call Agnes AI.
+- **Old video behavior appears:** hard-refresh and confirm the latest deployment; the retired API endpoints return HTTP 410 and do not call Agnes AI.
