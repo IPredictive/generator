@@ -75,8 +75,14 @@ module.exports = async function handler(req, res) {
       let adultRequest=false;
       try {
         const adultEngine=require('../lib/adult-intimacy');
-        const generalHistory=await db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.general&select=role,content&order=created_at.desc&limit='+MAX_HISTORY);
-        adultRequest=adultEngine.isAdultCreativeRequest(message,(generalHistory||[]).reverse());
+        const [generalHistory,adultHistory]=await Promise.all([
+          db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.general&select=role,content,created_at&order=created_at.desc&limit='+MAX_HISTORY),
+          db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.adult&select=role,content,created_at&order=created_at.desc&limit=12)
+        ]);
+        const latestGeneral=(generalHistory||[])[0],latestAdult=(adultHistory||[])[0];
+        const activeHistory=latestAdult&&(!latestGeneral||Date.parse(latestAdult.created_at)>Date.parse(latestGeneral.created_at))
+          ?(adultHistory||[]).reverse():(generalHistory||[]).reverse();
+        adultRequest=adultEngine.isAdultCreativeRequest(message,activeHistory);
       } catch(classifierError) {
         console.error('Prepared reply mode classification failed; refusing to commit:',String(classifierError).slice(0,160));
         return res.status(503).json({ok:false,error:'I could not safely save this prepared reply. Please send the message again.'});
@@ -207,15 +213,19 @@ module.exports = async function handler(req, res) {
     if(!message) return res.status(400).json({ok:false,error:'Write a message first.'});
     if(message.length>MAX_MESSAGE) return res.status(413).json({ok:false,error:'Please keep each message under 3,000 characters.'});
 
-    const [recent,memories,plans,profiles,tasks]=await Promise.all([
-      db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.general&select=role,content&order=created_at.desc&limit='+MAX_HISTORY),
+    const [recent,memories,adultRecent,plans,profiles,tasks]=await Promise.all([
+      db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.general&select=role,content,created_at&order=created_at.desc&limit='+MAX_HISTORY),
       db('companion_memories?user_id=eq.'+encodeURIComponent(user.id)+'&is_active=eq.true&select=id,memory,category&order=updated_at.desc&limit='+MAX_MEMORIES),
+      db('companion_messages?user_id=eq.'+encodeURIComponent(user.id)+'&conversation_mode=eq.adult&select=role,content,created_at&order=created_at.desc&limit=12).catch(e=>{console.error('Adult continuity context unavailable:',String(e).slice(0,120));return []}),
       db('companion_care_plans?user_id=eq.'+encodeURIComponent(user.id)+'&select=preferred_name,life_context,current_goals,support_style,checkin_enabled,checkin_time&limit=1').catch(e=>{console.error('Personal plan unavailable:',String(e).slice(0,120));return []}),
       db('companion_profiles?user_id=eq.'+encodeURIComponent(user.id)+'&select=summary,profile,version,updated_at&limit=1').catch(e=>{console.error('Evolution profile unavailable:',String(e).slice(0,120));return []}),
       db('companion_tasks?user_id=eq.'+encodeURIComponent(user.id)+'&select=title,details,status,due_at,followup_note,outcome,result_notes&order=updated_at.desc&limit=12').catch(e=>{console.error('Task context unavailable:',String(e).slice(0,120));return []})
     ]);
     // Keep the newest useful conversation context within a predictable size budget.
     const orderedHistory=(recent||[]).filter(item=>!isSensitiveMemory(item.content)).reverse();
+    const latestGeneral=(recent||[])[0],latestAdult=(adultRecent||[])[0];
+    const adultContextIsActive=!!(latestAdult&&(!latestGeneral||Date.parse(latestAdult.created_at)>Date.parse(latestGeneral.created_at)));
+    const activeAdultHistory=adultContextIsActive?(adultRecent||[]).filter(item=>!isSensitiveMemory(item.content)).reverse():[];
     const history=[];
     let historyChars=0;
     for(let i=orderedHistory.length-1;i>=0;i--){
@@ -273,7 +283,7 @@ Respond in the language the user uses, in accessible, natural wording. User-sele
     let adultRequest = false;
     try {
       adultEngine = require('../lib/adult-intimacy');
-      adultRequest = adultEngine.isAdultCreativeRequest(message, history);
+      adultRequest = adultEngine.isAdultCreativeRequest(message, adultContextIsActive?activeAdultHistory:history);
     } catch (moduleError) {
       console.error('Adult roleplay module unavailable; continuing with standard chat:', String(moduleError).slice(0, 180));
     }
