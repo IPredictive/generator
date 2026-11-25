@@ -9,11 +9,11 @@ async function fixture(){
   const directory=await fs.mkdtemp(path.join(os.tmpdir(),"apluscity-brain-"));
   const store=new EncryptedJsonStore({
     filePath:path.join(directory,"data.vault"),
-    encrypt:async text=>Buffer.from("encrypted:"+text,"utf8"),
+    encrypt:async text=>Buffer.from("test-cipher:"+Buffer.from(text,"utf8").toString("base64"),"utf8"),
     decrypt:async bytes=>{
       const value=bytes.toString("utf8");
-      if(!value.startsWith("encrypted:"))throw new Error("invalid ciphertext");
-      return value.slice("encrypted:".length);
+      if(!value.startsWith("test-cipher:"))throw new Error("invalid ciphertext");
+      return Buffer.from(value.slice("test-cipher:".length),"base64").toString("utf8");
     }
   });
   return{directory,store};
@@ -24,7 +24,7 @@ test("encrypted JSON store persists data without writing plaintext",async()=>{
   try{
     await store.save({secret:"enterprise-memory"});
     const bytes=await fs.readFile(path.join(directory,"data.vault"),"utf8");
-    assert.ok(bytes.startsWith("encrypted:"));
+    assert.ok(bytes.startsWith("test-cipher:"));
     assert.ok(!bytes.includes("enterprise-memory"));
     assert.deepEqual(await store.load({}),{secret:"enterprise-memory"});
   }finally{await fs.rm(directory,{recursive:true,force:true});}
