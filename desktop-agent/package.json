@@ -1,17 +1,52 @@
 {
   "name": "apluscity-desktop-agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Local Windows desktop agent for AplusCity",
+  "description": "AplusCity Silicon Intelligence desktop agent",
+  "productName": "AplusCity Silicon Intelligence",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test brain/*.test.cjs"
+    "test": "node --test brain/*.test.cjs",
+    "dist:win": "electron-builder --win nsis --x64"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
-    "electron": "^38.2.0"
+    "electron": "^38.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.apluscity.siliconintelligence",
+    "productName": "AplusCity Silicon Intelligence",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "brain/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "windows-agent",
+        "to": "windows-agent",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }
