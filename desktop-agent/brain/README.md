@@ -1,50 +1,55 @@
-# AplusCity Brain Core V1
+# AplusCity Brain Core V1 / V2 Desktop Runtime
 
-Brain Core V1 is a modular orchestration foundation for the AplusCity digital agent. It is separate from the Electron renderer and does not change the existing production web application.
+Brain Core is a modular orchestration foundation for the AplusCity digital agent. It remains isolated from the existing production web application.
 
-## Modules
+## V1 modules
 
-- orchestrator.cjs: unified entry point for planning, memory lookup, tool invocation and audit.
-- model-provider.cjs: OpenAI-compatible chat-completions provider and an explicit unconfigured provider.
-- roles.json and role-registry.cjs: nine specialist roles registered under one Brain Core.
+- orchestrator.cjs: unified planning, memory lookup, tool invocation and audit.
+- model-provider.cjs: OpenAI-compatible chat-completions provider and unconfigured fallback.
+- roles.json / role-registry.cjs: nine specialist roles.
 - task-planner.cjs: structured model planning with a safe local fallback. Planning never executes tools.
-- tool-registry.cjs: named tool registry with centralized permission checks.
-- memory-store.cjs: tenant/user-scoped memory interface and in-memory reference adapter.
-- audit-store.cjs: audit interface and in-memory adapter with credential-key redaction.
-- decision-engine.cjs: centralized action policy, including explicit-request enforcement for local app launch.
+- tool-registry.cjs / decision-engine.cjs: named tool registry and centralized permission checks.
+- memory-store.cjs / audit-store.cjs: memory and audit interfaces with in-memory reference adapters.
+
+## V2 desktop runtime
+
+- Electron main process creates one BrainOrchestrator and exposes narrowly scoped IPC methods through preload.cjs.
+- The desktop UI can configure a model endpoint, model ID, API key, enterprise scope label and employee scope label.
+- API key and settings are stored in the OS-protected encrypted vault. No plaintext fallback is permitted.
+- PersistentMemoryStore and PersistentAuditStore use EncryptedJsonStore; the data files are stored under Electron userData/brain-vault.
+- Windows safeStorage uses DPAPI. It protects data from other Windows user accounts, but does not protect against malicious software already running as the same Windows user.
+- WeChat launch is registered as a Brain tool and passes through the permission policy. The existing Windows agent still only launches the app and observes visible window metadata.
+- IPC handlers reject calls from a renderer other than the app's own local file renderer.
 
 ## Configure a model
 
-Set these environment variables before launching the desktop app or a Node process:
+In the desktop app, enter:
+- Enterprise scope ID (a local partition label, not authentication)
+- Employee scope ID (a local partition label, not authentication)
+- Model ID
+- Full chat-completions endpoint URL
+- API key
 
-- APLUSCITY_MODEL_API_KEY
-- APLUSCITY_MODEL
-- Optional: APLUSCITY_MODEL_BASE_URL (full chat-completions endpoint)
-- Optional: APLUSCITY_MODEL_TIMEOUT_MS
+The key is encrypted locally and is not returned to the renderer after saving. HTTPS is required except for localhost endpoints, which may use HTTP for local model runtimes. Never commit API keys to GitHub.
 
-The provider uses Node's built-in fetch and does not add a model SDK dependency. Do not commit API keys or place them in renderer code.
+## Use
 
-## Example
+1. Run `npm install` and `npm start` from `desktop-agent/`.
+2. Configure the model and local scope labels in the app.
+3. Enter a task and ask the Brain Core to produce a plan.
+4. Save durable notes/experience in the encrypted memory panel.
+5. The plan is planning-only. Tool execution requires a separate invocation and permission decision.
 
-    const { BrainOrchestrator } = require("./index.cjs");
-    const brain = new BrainOrchestrator();
-    const task = await brain.planTask({
-      request: "Prepare tomorrow's customer meeting",
-      identity: { tenantId: "company-001", userId: "employee-001" }
-    });
-    console.log(task.plan);
+## Security boundaries
 
-Register executable tools explicitly. A plan is not permission to execute. Tool invocations are checked by decision-engine.cjs; sensitive actions always return confirmation_required and do not execute.
-
-## Important V1 boundaries
-
-- Default memory and audit adapters are in-memory only and reset when the process exits. They are interfaces for later encrypted/durable adapters, not yet a production persistence layer.
-- Model integration is optional and is not configured by this commit. Without credentials, deterministic planning fallback is used.
-- No default tool can read private chat content, send messages, record meetings, delete files, pay, or share data.
-- Existing Windows agent remains observe-mode; Brain Core does not grant it new OS permissions.
-- Specialist roles are registered and can be selected, but V1 does not run nine independent model agents in parallel.
-- The model provider sends only prompt/context supplied by the caller. Review privacy and provider retention terms before connecting enterprise data.
+- Default permission mode remains observe.
+- Sensitive actions such as sending messages, recording meetings, deleting data, payments and external sharing require explicit confirmation and are not exposed as automatic UI actions in this release.
+- A task plan is never permission to execute its steps.
+- No tool reads private WeChat messages, sends messages, records meetings, deletes files, pays, or shares data.
+- Enterprise and employee identifiers currently provide data partitioning only. They are not a login system or proof of identity; production multi-user authentication and server-side tenant authorization remain future work.
+- Windows DPAPI protects the vault across Windows user accounts but not against malicious processes running as the same account. Use a dedicated, secured Windows account for sensitive enterprise data.
+- Model calls send the task prompt and relevant authorized memory to the configured model endpoint. Review the provider's privacy, retention and regional processing terms before sending enterprise information.
 
 ## Tests
 
-Run npm test from desktop-agent/. Tests use Node's built-in test runner and require no API key or network access.
+Run `npm test` from `desktop-agent/`. Tests use Node's built-in test runner and require no API key or network access. Persistent-store tests use a deterministic test cipher; they do not replace an integration test on a real Windows machine using DPAPI.
