@@ -5,7 +5,11 @@
   "description": "Local Windows desktop agent for AplusCity",
   "main": "main.cjs",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "node --test brain/*.test.cjs"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "devDependencies": {
     "electron": "^38.2.0"
