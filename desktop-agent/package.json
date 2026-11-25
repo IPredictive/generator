@@ -1,0 +1,13 @@
+{
+  "name": "apluscity-desktop-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local Windows desktop agent for AplusCity",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.2.0"
+  }
+}
