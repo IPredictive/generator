@@ -1,52 +1,8 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
-const path = require("node:path");
-
-let mainWindow;
-
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1080,
-    height: 760,
-    minWidth: 820,
-    minHeight: 600,
-    title: "AplusCity Desktop Agent",
-    backgroundColor: "#0b1020",
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true
-    }
-  });
-
-  mainWindow.loadFile(path.join(__dirname, "index.html"));
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https://")) shell.openExternal(url);
-    return { action: "deny" };
-  });
-}
-
-app.whenReady().then(() => {
-  ipcMain.handle("agent:get-status", async () => ({
-    app: "AplusCity Desktop Agent",
-    platform: process.platform,
-    version: app.getVersion(),
-    phase: "foundation",
-    capabilities: {
-      localAutomation: false,
-      wechat: "not-connected",
-      zoom: "not-connected",
-      recording: "not-enabled",
-      aiBrain: "not-connected"
-    }
-  }));
-
-  createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+const {app,BrowserWindow,ipcMain,shell}=require("electron");
+const path=require("node:path");const {spawn}=require("node:child_process");const crypto=require("node:crypto");
+let win,service;const token=crypto.randomBytes(32).toString("hex"),port=18765,base="http://127.0.0.1:"+port;
+function startService(){if(process.platform!=="win32")return;service=spawn("python",[path.join(__dirname,"windows-agent","agent_service.py")],{windowsHide:true,stdio:"ignore",env:{...process.env,APLUSCITY_AGENT_TOKEN:token,APLUSCITY_AGENT_PORT:String(port)}});service.on("error",()=>{});}
+async function request(route,method="GET"){if(process.platform!=="win32")return{ok:false,error:"Windows only"};try{const r=await fetch(base+route,{method,headers:{Authorization:"Bearer "+token}});return await r.json();}catch{return{ok:false,error:"本地执行服务未启动。请确认已安装 Python 3.10+ 并重启应用。"};}}
+function createWindow(){win=new BrowserWindow({width:1080,height:760,minWidth:820,minHeight:600,title:"AplusCity Desktop Agent",backgroundColor:"#0b1020",webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}});win.loadFile(path.join(__dirname,"index.html"));win.webContents.setWindowOpenHandler(({url})=>{if(url.startsWith("https://"))shell.openExternal(url);return{action:"deny"};});}
+app.whenReady().then(()=>{startService();ipcMain.handle("agent:get-status",()=>request("/status"));ipcMain.handle("agent:get-windows",()=>request("/windows"));ipcMain.handle("agent:detect-wechat",()=>request("/wechat/detect"));ipcMain.handle("agent:launch-wechat",()=>request("/wechat/launch","POST"));createWindow();app.on("activate",()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});});
+app.on("before-quit",()=>{if(service)service.kill();});app.on("window-all-closed",()=>{if(process.platform!=="darwin")app.quit();});
