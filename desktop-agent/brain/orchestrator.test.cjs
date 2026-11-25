@@ -92,3 +92,13 @@ test("planner validates and normalizes model-generated plans",async()=>{
   assert.equal(plan.provider,"model");
   assert.equal(plan.steps[0].requiresApproval,true);
 });
+
+test("task planning does not send stored memory unless the user opts in",async()=>{
+  let searches=0;
+  const memory={search:async()=>{searches++;return[{content:"private enterprise context"}];},save:async()=>{}};
+  const brain=new BrainOrchestrator({memoryStore:memory});
+  await brain.planTask({request:"Plan a task",identity:{tenantId:"t1",userId:"u1"}});
+  assert.equal(searches,0);
+  await brain.planTask({request:"Plan a task",identity:{tenantId:"t1",userId:"u1"},includeMemory:true});
+  assert.equal(searches,1);
+});
