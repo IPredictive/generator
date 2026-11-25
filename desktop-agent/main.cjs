@@ -109,6 +109,7 @@ app.whenReady().then(async()=>{
     settings={tenantId,userId,model,baseUrl,apiKey};
     await settingsStore.save(settings);
     createBrain();
+    await brain.audit.record({event:"model_config_saved",tenantId,userId,decision:"allow",outcome:"saved",metadata:{model,endpointHost:new URL(baseUrl).host}});
     return{ok:true,configured:true,model,tenantId,userId};
   });
   handle("brain:plan-task",async(input={})=>{
