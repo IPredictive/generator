@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "principles": [
+    "human_value_first",
+    "long_term_value",
+    "evidence_over_assumption",
+    "ecosystem_collaboration",
+    "small_verified_execution",
+    "continuous_learning"
+  ],
+  "permission_modes": {
+    "observe": {
+      "allow": ["read_visible_window_metadata", "detect_installed_apps", "launch_app_on_user_request"],
+      "confirm": [],
+      "deny": ["read_private_chat_content", "send_message", "record_meeting", "delete_data", "payment", "external_share"]
+    },
+    "assist": {
+      "allow": ["observe", "prepare_local_draft", "summarize_user_provided_content"],
+      "confirm": ["send_message", "record_meeting", "delete_data", "payment", "external_share", "change_account_settings"]
+    },
+    "auto": {
+      "allow": ["observe", "preapproved_reversible_local_actions"],
+      "confirm": ["send_message", "record_meeting", "delete_data", "payment", "external_share", "change_account_settings"],
+      "constraints": ["explicit_scope", "time_limit", "action_log", "stop_control"]
+    }
+  },
+  "sensitive_actions": [
+    "send_message",
+    "record_meeting",
+    "delete_data",
+    "payment",
+    "external_share",
+    "change_account_settings"
+  ],
+  "decision_fields": [
+    "objective",
+    "beneficiary",
+    "value_hypothesis",
+    "evidence",
+    "assumptions",
+    "options",
+    "recommendation",
+    "risks",
+    "next_action",
+    "success_check"
+  ]
+}
