@@ -28,7 +28,7 @@ npm start
 
 The Python bridge uses only the standard library. Ensure `python` is available on PATH.
 
-## First-run setup
+## Build a Windows installer\n\nGitHub Actions builds an unsigned Windows x64 NSIS installer on the feature branch. Open the branch's Actions run and download the artifact named \`apluscity-silicon-intelligence-windows-x64\`. The installer is a test artifact, not a signed public release; Windows SmartScreen may show a warning.\n\nTo build locally, run \`npm install\` then \`npm run dist:win\` from this directory.\n\n## First-run setup
 
 1. Open the app and enter an enterprise scope ID and employee scope ID. These are local data-partition labels, not an authentication system.
 2. Enter a model ID and a full OpenAI-compatible chat-completions endpoint.
