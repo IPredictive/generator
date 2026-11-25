@@ -48,7 +48,7 @@ The key is encrypted locally and is not returned to the renderer after saving. H
 - No tool reads private WeChat messages, sends messages, records meetings, deletes files, pays, or shares data.
 - Enterprise and employee identifiers currently provide data partitioning only. They are not a login system or proof of identity; production multi-user authentication and server-side tenant authorization remain future work.
 - Windows DPAPI protects the vault across Windows user accounts but not against malicious processes running as the same account. Use a dedicated, secured Windows account for sensitive enterprise data.
-- Model calls send the task prompt and relevant authorized memory to the configured model endpoint. Review the provider's privacy, retention and regional processing terms before sending enterprise information.
+- Model calls send the task prompt to the configured model endpoint. Local memory is not included by default; the user must explicitly check the memory-sharing consent before relevant memory is sent. Review the provider's privacy, retention and regional processing terms before sending enterprise information.
 
 ## Tests
 
