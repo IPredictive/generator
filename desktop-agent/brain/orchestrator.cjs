@@ -13,9 +13,9 @@ class BrainOrchestrator {
     this.tools=options.toolRegistry||new ToolRegistry({auditStore:this.audit});
     this.planner=options.planner||new TaskPlanner({provider:this.provider,roleRegistry:this.roles});
   }
-  async planTask({request,identity,roles,mode="observe"}={}) {
+  async planTask({request,identity,roles,mode="observe",includeMemory=false}={}) {
     if (!identity||!identity.tenantId||!identity.userId) throw new Error("A tenantId and userId are required before planning an enterprise task.");
-    const context=await this.memory.search({identity,query:request,limit:8});
+    const context=includeMemory?await this.memory.search({identity,query:request,limit:8}):[];
     const plan=await this.planner.plan({request,identity,roles,memory:context});
     await this.audit.record({
       event:"task_planned",tenantId:identity.tenantId,userId:identity.userId,decision:"allow",outcome:"planned",
