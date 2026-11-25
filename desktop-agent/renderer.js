@@ -1,10 +1,5 @@
-async function loadStatus() {
-  const target = document.getElementById("status");
-  try {
-    const status = await window.apluscityAgent.getStatus();
-    target.textContent = `桌面外壳已启动（${status.platform}）。本地自动化：未启用；微信：未连接；Zoom：未连接。`;
-  } catch {
-    target.textContent = "无法读取本地代理状态。";
-  }
-}
-loadStatus();
+const $=id=>document.getElementById(id);
+async function refreshStatus(){const s=await window.apluscityAgent.getStatus();$("status").textContent=s.ok?"本地 Windows 执行服务已连接（观察模式）。":(s.error||"本地服务未连接");const w=await window.apluscityAgent.detectWeChat();$("wechat-status").textContent=w.ok?(w.installed?"已找到 Windows 微信："+w.executable:"未找到微信，请先安装 Windows 版微信。"):(w.error||"检测失败");}
+async function refreshWindows(){const r=await window.apluscityAgent.getWindows(),list=$("windows");list.replaceChildren();if(!r.ok){const li=document.createElement("li");li.textContent=r.error||"读取失败";list.append(li);return;}r.windows.forEach(w=>{const li=document.createElement("li");li.textContent=w.title+" · PID "+w.pid;list.append(li);});if(!r.windows.length){const li=document.createElement("li");li.textContent="没有检测到可见窗口";list.append(li);}}
+$("launch-wechat").addEventListener("click",async()=>{const r=await window.apluscityAgent.launchWeChat();$("wechat-status").textContent=r.ok?"已请求启动微信。请在电脑上完成登录。":(r.error||"启动失败");setTimeout(refreshWindows,1500);});
+$("refresh-windows").addEventListener("click",refreshWindows);refreshStatus();refreshWindows();
