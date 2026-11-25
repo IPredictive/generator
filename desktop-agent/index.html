@@ -25,9 +25,9 @@
 
   <section class="panel">
     <div class="section-heading"><div><p class="eyebrow">TASK ORCHESTRATOR</p><h2>交给大脑的任务</h2></div><span class="pill">规划模式</span></div>
-    <p class="subtle">先理解目标、调取授权记忆、分配九脑角色并生成可检查计划。当前不会自动执行计划步骤。企业与员工标识仅用于本机数据分区，不等同于账号身份验证。</p>
+    <p class="subtle">先理解目标、分配九脑角色并生成可检查计划。默认不向模型发送本机记忆；勾选后才会把相关记忆发送到你配置的模型端点。当前不会自动执行计划步骤。企业与员工标识仅用于本机数据分区，不等同于账号身份验证。</p>
     <form id="task-form">
-      <label>你希望大脑完成什么？<textarea id="task-request" rows="3" maxlength="8000" placeholder="例如：分析一家新加坡中小企业如何减少客户跟进的人工时间，并制定一周试点计划。" required></textarea></label>
+      <label>你希望大脑完成什么？<textarea id="task-request" rows="3" maxlength="8000" placeholder="例如：分析一家新加坡中小企业如何减少客户跟进的人工时间，并制定一周试点计划。" required></textarea></label><label class="consent"><input id="include-memory" type="checkbox">允许将本机相关记忆发送到当前配置的模型端点</label>
       <div class="form-actions"><button type="submit">分析并制定任务计划</button><span id="task-message" class="feedback" aria-live="polite"></span></div>
     </form>
     <pre id="task-result" class="result" aria-live="polite">等待任务输入…</pre>
