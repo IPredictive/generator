@@ -1,30 +1,50 @@
-# AplusCity Strategic Brain
+# AplusCity Brain Core V1
 
-This module defines a public-principles-inspired business reasoning layer for AplusCity Desktop Agent. It does **not** claim to reproduce Jack Ma's private thoughts, personality, or brain. It translates publicly discussed business ideas commonly associated with long-term vision, customer value, entrepreneurship, ecosystem thinking, and execution into a testable assistant workflow.
+Brain Core V1 is a modular orchestration foundation for the AplusCity digital agent. It is separate from the Electron renderer and does not change the existing production web application.
 
-## Decision loop
+## Modules
 
-1. Understand the human's real objective and constraints.
-2. Start from customer/user value, not from technology for its own sake.
-3. Examine the long-term opportunity and the near-term practical step.
-4. Compare options, costs, risks, reversibility, and evidence.
-5. Recommend one clear next action with measurable success criteria.
-6. Execute only within the granted desktop permission mode.
-7. Verify the result and record a concise learning note.
+- orchestrator.cjs: unified entry point for planning, memory lookup, tool invocation and audit.
+- model-provider.cjs: OpenAI-compatible chat-completions provider and an explicit unconfigured provider.
+- roles.json and role-registry.cjs: nine specialist roles registered under one Brain Core.
+- task-planner.cjs: structured model planning with a safe local fallback. Planning never executes tools.
+- tool-registry.cjs: named tool registry with centralized permission checks.
+- memory-store.cjs: tenant/user-scoped memory interface and in-memory reference adapter.
+- audit-store.cjs: audit interface and in-memory adapter with credential-key redaction.
+- decision-engine.cjs: centralized action policy, including explicit-request enforcement for local app launch.
 
-## Six reasoning roles
+## Configure a model
 
-- Strategy: direction, timing, long-term value.
-- Market: customer pain, demand, alternatives, competition.
-- Innovation: simpler or more useful ways to solve the problem.
-- Operations: people, workflow, priority, resources.
-- Execution: convert approved plans into desktop actions.
-- Reflection: verify outcomes, learn from errors, update recommendations.
+Set these environment variables before launching the desktop app or a Node process:
 
-## Safety boundary
+- APLUSCITY_MODEL_API_KEY
+- APLUSCITY_MODEL
+- Optional: APLUSCITY_MODEL_BASE_URL (full chat-completions endpoint)
+- Optional: APLUSCITY_MODEL_TIMEOUT_MS
 
-The strategic brain may recommend actions, but it cannot grant itself permissions. The desktop permission gate remains authoritative. Sending messages, recording meetings, deleting files, purchases/payments, account changes, and external sharing require explicit user confirmation. Never bypass OS, app, meeting-host, or participant consent controls.
+The provider uses Node's built-in fetch and does not add a model SDK dependency. Do not commit API keys or place them in renderer code.
 
-## Current implementation status
+## Example
 
-The prompt and local decision policy are implemented as a foundation. They do not yet connect to a language model or execute desktop actions. Current Windows integration remains observe mode (launch WeChat and list window titles).
+    const { BrainOrchestrator } = require("./index.cjs");
+    const brain = new BrainOrchestrator();
+    const task = await brain.planTask({
+      request: "Prepare tomorrow's customer meeting",
+      identity: { tenantId: "company-001", userId: "employee-001" }
+    });
+    console.log(task.plan);
+
+Register executable tools explicitly. A plan is not permission to execute. Tool invocations are checked by decision-engine.cjs; sensitive actions always return confirmation_required and do not execute.
+
+## Important V1 boundaries
+
+- Default memory and audit adapters are in-memory only and reset when the process exits. They are interfaces for later encrypted/durable adapters, not yet a production persistence layer.
+- Model integration is optional and is not configured by this commit. Without credentials, deterministic planning fallback is used.
+- No default tool can read private chat content, send messages, record meetings, delete files, pay, or share data.
+- Existing Windows agent remains observe-mode; Brain Core does not grant it new OS permissions.
+- Specialist roles are registered and can be selected, but V1 does not run nine independent model agents in parallel.
+- The model provider sends only prompt/context supplied by the caller. Review privacy and provider retention terms before connecting enterprise data.
+
+## Tests
+
+Run npm test from desktop-agent/. Tests use Node's built-in test runner and require no API key or network access.
