@@ -63,3 +63,32 @@ test("unconfigured model provider fails clearly without network access",async()=
   assert.equal(provider.isConfigured(),false);
   await assert.rejects(provider.generate(),/No model provider configured/);
 });
+
+test("model provider uses an injected fetch implementation",async()=>{
+  const {OpenAICompatibleProvider}=require("./model-provider.cjs");
+  let called=false;
+  const provider=new OpenAICompatibleProvider({
+    apiKey:"test-key",model:"test-model",baseUrl:"https://example.test/v1/chat/completions",
+    fetchImpl:async(url,options)=>{
+      called=true;
+      assert.equal(url,"https://example.test/v1/chat/completions");
+      assert.equal(options.headers.Authorization,"Bearer test-key");
+      return {ok:true,json:async()=>({choices:[{message:{content:"model response"}}]})};
+    }
+  });
+  assert.equal(await provider.generate({system:"system",user:"hello"}),"model response");
+  assert.equal(called,true);
+});
+
+test("planner validates and normalizes model-generated plans",async()=>{
+  const {TaskPlanner}=require("./task-planner.cjs");
+  const provider={isConfigured:()=>true,generate:async()=>JSON.stringify({
+    title:"Customer follow-up",objective:"Prepare follow-up",
+    steps:[{id:"draft",title:"Prepare draft",requiresApproval:true}],
+    successCriteria:["Draft reviewed"],assumptions:[],risks:[]
+  })};
+  const planner=new TaskPlanner({provider,roleRegistry:new RoleRegistry()});
+  const plan=await planner.plan({request:"Follow up with customer"});
+  assert.equal(plan.provider,"model");
+  assert.equal(plan.steps[0].requiresApproval,true);
+});
