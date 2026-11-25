@@ -1,18 +1,18 @@
 const policy = require("./decision-policy.json");
-
 const SENSITIVE = new Set(policy.sensitive_actions);
 
 function evaluateAction({ mode = "observe", action, explicitlyRequested = false, preapproved = false } = {}) {
   const rules = policy.permission_modes[mode];
   if (!rules || !action) return { decision: "deny", reason: "Unknown permission mode or missing action." };
-
   if (SENSITIVE.has(action)) {
-    return {
-      decision: "confirm",
-      reason: "Sensitive or externally visible action requires explicit user confirmation."
-    };
+    return { decision: "confirm", reason: "Sensitive or externally visible action requires explicit user confirmation." };
   }
-
+  // Launching an app is permitted in observe mode only as a direct response to a user request.
+  if (action === "launch_app_on_user_request") {
+    return mode === "observe" && explicitlyRequested
+      ? { decision: "allow", reason: "The user explicitly requested this local app launch." }
+      : { decision: "deny", reason: "Local app launch requires an explicit user request in observe mode." };
+  }
   const allowed = new Set(rules.allow || []);
   if (allowed.has(action) || (mode !== "observe" && action === "observe")) {
     if (mode === "auto" && action === "preapproved_reversible_local_actions" && !preapproved) {
@@ -20,11 +20,6 @@ function evaluateAction({ mode = "observe", action, explicitlyRequested = false,
     }
     return { decision: "allow", reason: "Action is within the current permission policy." };
   }
-
-  if (mode === "observe" && action === "launch_app_on_user_request" && explicitlyRequested) {
-    return { decision: "allow", reason: "The user explicitly requested this local app launch." };
-  }
-
   return { decision: "deny", reason: "Action is not enabled in the current permission mode." };
 }
 
@@ -42,5 +37,4 @@ function buildDecisionBrief(input = {}) {
     success_check: input.successCheck || "Define an observable result before execution"
   };
 }
-
 module.exports = { evaluateAction, buildDecisionBrief };
