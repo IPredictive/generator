@@ -41,7 +41,7 @@ $("settings-form").addEventListener("submit",async event=>{
 $("task-form").addEventListener("submit",async event=>{
   event.preventDefault();showMessage("task-message","大脑正在分析并制定计划…");$("task-result").textContent="正在规划…";
   try{
-    const result=await window.apluscityAgent.planTask({request:$("task-request").value});
+    const result=await window.apluscityAgent.planTask({request:$("task-request").value,includeMemory:$("include-memory").checked});
     $("task-result").textContent=JSON.stringify(result,null,2);
     showMessage("task-message",result.plan.provider==="model"?"模型规划完成。尚未执行任何步骤。":"基础规划完成。配置模型后可启用真实模型推理。");
   }catch(error){$("task-result").textContent="";showMessage("task-message",error.message,true);}
