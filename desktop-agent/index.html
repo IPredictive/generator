@@ -1,1 +1,55 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"><title>AplusCity Desktop Agent</title><link rel="stylesheet" href="styles.css"></head><body><main class="shell"><header><div class="mark">A+</div><div><p class="eyebrow">APLUSCITY</p><h1>Desktop Agent</h1></div><span class="state"><i></i> 本地安全模式</span></header><section class="hero"><p class="eyebrow">YOUR COMPUTER, WITH PERMISSION</p><h2>让 AI 帮你操作电脑</h2><p>第一阶段：连接 Windows 本地执行服务，以观察模式开始。</p></section><section class="grid"><article><span class="glyph">W</span><h3>Windows 个人微信</h3><p id="wechat-status">正在检测微信安装状态…</p><button id="launch-wechat">打开微信</button><small>当前只支持启动与窗口检测，不读取或发送聊天内容。</small></article><article><span class="glyph">Z</span><h3>Zoom</h3><p>下一阶段接入会议操作、授权录像、转写与会议纪要。</p><small>尚未连接</small></article><article><span class="glyph">⌘</span><h3>电脑窗口</h3><p>列出当前可见窗口，验证本地观察能力。</p><button id="refresh-windows" class="secondary">刷新窗口列表</button><small>只读观察，不执行键盘或鼠标输入。</small></article></section><section class="controls"><div><h3>操作权限：观察模式</h3><p>发送消息、开始录像、删除文件等操作不会在本阶段执行。</p></div><div class="mode">观察模式 <b>默认</b></div></section><section class="log"><h3>可见窗口</h3><ul id="windows"><li>尚未读取</li></ul><p id="status" class="muted">正在连接本地执行服务…</p></section><footer>本地优先 · 明确授权 · 可随时停止</footer></main><script src="renderer.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+  <title>AplusCity Silicon Intelligence</title><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="shell">
+  <header><div class="mark">A+</div><div><p class="eyebrow">APLUSCITY</p><h1>Silicon Intelligence</h1></div><span class="state"><i></i> 本地安全模式</span></header>
+  <section class="hero"><p class="eyebrow">THINK · PLAN · REMEMBER · ACT WITH PERMISSION</p><h2>让智能大脑开始工作</h2><p>Brain Core V2：统一任务规划、模型连接、加密记忆与受控电脑操作。</p></section>
+
+  <section class="panel">
+    <div class="section-heading"><div><p class="eyebrow">BRAIN CONFIGURATION</p><h2>大脑与企业身份设置</h2></div><span id="model-state" class="pill">模型尚未连接</span></div>
+    <form id="settings-form" class="settings-grid">
+      <label>企业标识<input id="tenant-id" maxlength="100" placeholder="例如 company-001" required></label>
+      <label>员工标识<input id="user-id" maxlength="100" placeholder="例如 employee-001" required></label>
+      <label>模型名称<input id="model-id" maxlength="160" placeholder="填写你所使用的模型 ID" required></label>
+      <label>模型 API 端点<input id="model-endpoint" type="url" value="https://api.openai.com/v1/chat/completions" required></label>
+      <label class="wide">模型 API Key<input id="model-key" type="password" autocomplete="new-password" placeholder="输入密钥；留空表示保留已保存密钥"></label>
+      <div class="wide form-actions"><button type="submit">加密保存并连接大脑</button><small>密钥和本机记忆通过 Windows 系统加密能力保存，不会写入网页代码或 GitHub。</small></div>
+    </form>
+    <p id="settings-message" class="feedback" aria-live="polite"></p>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><div><p class="eyebrow">TASK ORCHESTRATOR</p><h2>交给大脑的任务</h2></div><span class="pill">规划模式</span></div>
+    <p class="subtle">先理解目标、调取授权记忆、分配九脑角色并生成可检查计划。当前不会自动执行计划步骤。</p>
+    <form id="task-form">
+      <label>你希望大脑完成什么？<textarea id="task-request" rows="3" maxlength="8000" placeholder="例如：分析一家新加坡中小企业如何减少客户跟进的人工时间，并制定一周试点计划。" required></textarea></label>
+      <div class="form-actions"><button type="submit">分析并制定任务计划</button><span id="task-message" class="feedback" aria-live="polite"></span></div>
+    </form>
+    <pre id="task-result" class="result" aria-live="polite">等待任务输入…</pre>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><div><p class="eyebrow">LONG-TERM MEMORY</p><h2>加密记忆</h2></div><span class="pill">企业 / 员工隔离</span></div>
+    <form id="memory-form">
+      <label>保存一条经验或业务背景<textarea id="memory-content" rows="2" maxlength="4000" placeholder="例如：客户偏好每周二上午收到项目进度更新。" required></textarea></label>
+      <div class="form-actions"><button type="submit" class="secondary">保存到长期记忆</button><span id="memory-message" class="feedback" aria-live="polite"></span></div>
+    </form>
+    <ul id="memory-results" class="memory-list"><li>记忆只保存在本机加密存储中，当前身份下可检索。</li></ul>
+  </section>
+
+  <section class="grid">
+    <article><span class="glyph">W</span><h3>Windows 个人微信</h3><p id="wechat-status">正在检测微信安装状态…</p><button id="launch-wechat">打开微信</button><small>当前仅启动应用和观察窗口，不读取或发送聊天内容。</small></article>
+    <article><span class="glyph">9</span><h3>九脑专业角色</h3><p id="role-status">正在读取九脑注册状态…</p><small>战略、研究、市场、财务、运营、执行、沟通、风险、学习。</small></article>
+    <article><span class="glyph">⌘</span><h3>电脑窗口</h3><p>列出当前可见窗口，验证本地观察能力。</p><button id="refresh-windows" class="secondary">刷新窗口列表</button><small>只读观察，不执行键盘或鼠标输入。</small></article>
+  </section>
+  <section class="controls"><div><h3>操作权限：观察模式</h3><p>任务计划不会自动执行。发送消息、录像、删除、付款和外部分享仍需明确确认。</p></div><div class="mode">观察模式 <b>默认</b></div></section>
+  <section class="log"><h3>电脑可见窗口</h3><ul id="windows"><li>尚未读取</li></ul><p id="status" class="muted">正在连接本地执行服务…</p></section>
+  <footer>本地优先 · 企业隔离 · 明确授权 · 可审计 · 可随时停止</footer>
+</main>
+<script src="renderer.js"></script>
+</body></html>
