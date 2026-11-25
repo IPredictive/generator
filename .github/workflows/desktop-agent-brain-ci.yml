@@ -25,4 +25,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          for file in *.cjs *.js brain/*.cjs; do
+            node --check "$file"
+          done
+      - name: Check Windows agent Python syntax
+        run: python3 -m py_compile windows-agent/agent_service.py
       - run: npm test
