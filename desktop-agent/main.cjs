@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,shell,safeStorage}=require("electron");
+const {app,BrowserWindow,ipcMain,safeStorage}=require("electron");
 const path=require("node:path");
 const {spawn}=require("node:child_process");
 const crypto=require("node:crypto");
@@ -79,7 +79,7 @@ function createWindow() {
     backgroundColor:"#0b1020",webPreferences:{preload:path.join(__dirname,"preload.cjs"),
       contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.loadFile(path.join(__dirname,"index.html"));
-  win.webContents.setWindowOpenHandler(({url})=>{if(url.startsWith("https://"))shell.openExternal(url);return{action:"deny"};});
+  win.webContents.setWindowOpenHandler(()=>({action:"deny"}));
 }
 app.whenReady().then(async()=>{
   settingsStore=encryptedStore("settings.vault");
